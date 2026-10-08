@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Shop admin · The Mountain Thrifters</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#F5F0DF;--surface:#FBF8EC;--panel:#EAE3CB;--ink:#0E140F;--muted:#45524A;--line:#DDD6BE;--btn:#0C2714;--on-btn:#F5F0DF;--pop:#C8FF2E;--bad:#B3261E}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Instrument Sans',system-ui,sans-serif;font-size:17px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:28px;letter-spacing:-.03em;margin:0 0 16px}h2{font-size:22px;letter-spacing:-.02em;margin:0}
+[hidden]{display:none!important}
+.tabs{display:flex;gap:8px;margin-bottom:20px}
+.tab{flex:1;border:0;cursor:pointer;padding:13px 8px;border-radius:999px;background:var(--panel);font:inherit;font-weight:600;color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--btn);color:var(--on-btn)}
+.stack{display:flex;flex-direction:column;gap:14px}
+label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px}
+input,select,textarea{font:inherit;color:inherit;width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:13px 14px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.btn{border:0;cursor:pointer;font:inherit;font-weight:700;padding:15px 22px;border-radius:999px;background:var(--btn);color:var(--on-btn)}
+.btn:disabled{opacity:.5}
+.btn.small{padding:10px 16px;font-size:15px;font-weight:600}
+.btn.line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn.pop{background:var(--pop);color:#0C2714}
+.card{background:var(--surface);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.muted{color:var(--muted);font-size:15px}
+.pill{display:inline-block;padding:3px 12px;border-radius:999px;background:var(--panel);font-size:14px;font-weight:600}
+.pill.paid,.pill.shipped{background:var(--pop)}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px}
+.thumbs img,.pic{width:76px;height:76px;object-fit:cover;border-radius:12px;background:var(--panel)}
+.check{flex-direction:row;align-items:center;gap:10px;font-weight:500;font-size:17px}
+.check input{width:24px;height:24px;flex:none}
+.msg{font-weight:600}.msg.bad{color:var(--bad)}
+:focus-visible{outline:3px solid var(--pop);outline-offset:2px;box-shadow:0 0 0 5px var(--btn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Shop admin</h1>
+
+<form class="stack" id="login">
+  <label for="key">Admin key<input id="key" type="password" autocomplete="current-password"></label>
+  <button class="btn" type="submit">Open</button>
+  <div class="msg bad" id="loginMsg" role="alert"></div>
+</form>
+
+<div id="app" hidden>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="add" aria-selected="true">Add stock</button>
+    <button class="tab" role="tab" data-tab="orders" aria-selected="false">Orders</button>
+    <button class="tab" role="tab" data-tab="stock" aria-selected="false">Stock</button>
+  </div>
+
+  <form class="stack" id="add">
+    <label for="photos">Photos (first one is the main photo)<input id="photos" type="file" accept="image/*" multiple></label>
+    <div class="thumbs" id="thumbs"></div>
+    <label for="name">Name<input id="name" type="text" placeholder="Colour-block ski jacket"></label>
+    <div class="two">
+      <label for="price">Price (Rs)<input id="price" type="text" inputmode="numeric" placeholder="2400"></label>
+      <label for="size">Size<select id="size"><option>XS</option><option>S</option><option selected>M</option><option>L</option><option>XL</option><option>XXL</option><option>Kids</option><option>One size</option></select></label>
+    </div>
+    <div class="two">
+      <label for="condition">Condition<select id="condition"><option>Barely worn</option><option>Worn in</option><option>Well loved</option></select></label>
+      <label for="vibe">Vibe<select id="vibe"><option>Retro ski</option><option>Gorpcore</option><option>Puffers</option><option>Trek and fleece</option></select></label>
+    </div>
+    <label for="description">Notes for the buyer (optional)<textarea id="description" rows="2" placeholder="Any marks, repairs, how it fits"></textarea></label>
+    <label class="check" for="ig"><input id="ig" type="checkbox" checked> Also post it to Instagram</label>
+    <button class="btn" type="submit" id="addBtn">Put it live</button>
+    <div class="msg" id="addMsg" role="status"></div>
+  </form>
+
+  <div class="stack" id="orders" hidden></div>
+  <div class="stack" id="stock" hidden></div>
+</div>
+</div>
+
+<script>
+var KEY = '';
+try { KEY = sessionStorage.getItem('mt-admin') || ''; } catch (e) {}
+var pics = [];
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function api(path, body){
+  return fetch(path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-admin-key': KEY }, body: body ? JSON.stringify(body) : undefined })
+    .then(function(r){ return r.json().then(function(b){ if(!r.ok) throw new Error(b.message || 'That did not work.'); return b; }); });
+}
+function enter(){ $('login').hidden = true; $('app').hidden = false; }
+$('login').addEventListener('submit', function(e){ e.preventDefault(); KEY = $('key').value.trim();
+  api('/api/admin/orders').then(function(){ try { sessionStorage.setItem('mt-admin', KEY); } catch (e2) {} enter(); }).catch(function(err){ $('loginMsg').textContent = err.message; }); });
+if (KEY) api('/api/admin/orders').then(enter).catch(function(){ KEY = ''; });
+
+document.querySelectorAll('.tab').forEach(function(t){ t.addEventListener('click', function(){
+  document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', x === t ? 'true' : 'false'); });
+  ['add','orders','stock'].forEach(function(n){ $(n).hidden = n !== t.dataset.tab; });
+  if (t.dataset.tab === 'orders') loadOrders(); if (t.dataset.tab === 'stock') loadStock();
+}); });
+
+// Shrinks each photo in the browser so uploads are quick, and trims extreme
+// shapes to what Instagram accepts (between 4:5 tall and 1.91:1 wide).
+function shrink(file){ return new Promise(function(resolve, reject){
+  var img = new Image(), url = URL.createObjectURL(file);
+  img.onload = function(){
+    var w = img.naturalWidth, h = img.naturalHeight, sx = 0, sy = 0;
+    if (w / h < 0.8) { var nh = Math.round(w / 0.8); sy = Math.round((h - nh) / 2); h = nh; }
+    else if (w / h > 1.91) { var nw = Math.round(h * 1.91); sx = Math.round((w - nw) / 2); w = nw; }
+    var scale = Math.min(1, 1280 / Math.max(w, h)), c = document.createElement('canvas');
+    c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+    c.getContext('2d').drawImage(img, sx, sy, w, h, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.82));
+  };
+  img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('One photo could not be opened. Try a JPG or PNG.')); };
+  img.src = url;
+}); }
+$('photos').addEventListener('change', function(){
+  var files = Array.prototype.slice.call(this.files, 0, 6); $('addMsg').className = 'msg'; $('addMsg').textContent = 'Preparing photos…';
+  Promise.all(files.map(shrink)).then(function(list){ pics = list; $('thumbs').innerHTML = list.map(function(u){ return '<img src="' + u + '" alt="Photo preview">'; }).join(''); $('addMsg').textContent = ''; })
+    .catch(function(err){ pics = []; $('addMsg').className = 'msg bad'; $('addMsg').textContent = err.message; });
+});
+$('add').addEventListener('submit', function(e){ e.preventDefault(); var m = $('addMsg'), b = $('addBtn');
+  if (!pics.length) { m.className = 'msg bad'; m.textContent = 'Add at least one photo.'; return; }
+  b.disabled = true; m.className = 'msg'; m.textContent = 'Uploading…';
+  api('/api/admin/product', { name: $('name').value, price: $('price').value, size: $('size').value, condition: $('condition').value, vibe: $('vibe').value,
+    description: $('description').value, images: pics, postToInstagram: $('ig').checked })
+  .then(function(r){ var ig = r.instagram === 'posted' ? ' Posted to Instagram.' : r.instagram === 'not requested' ? '' : ' Instagram: ' + r.instagram + '.';
+    m.innerHTML = 'Live on the shop. <a href="/p/' + esc(r.id) + '" target="_blank" rel="noopener">View it</a>.' + esc(ig);
+    pics = []; $('thumbs').innerHTML = ''; ['photos','name','price','description'].forEach(function(id){ $(id).value = ''; }); })
+  .catch(function(err){ m.className = 'msg bad'; m.textContent = err.message; })
+  .then(function(){ b.disabled = false; });
+});
+
+function loadOrders(){ var el = $('orders'); el.innerHTML = '<div class="muted">Loading…</div>';
+  api('/api/admin/orders').then(function(d){
+    if (!d.orders.length) { el.innerHTML = '<div class="card muted">No orders yet. New orders show up here and on your phone.</div>'; return; }
+    el.innerHTML = d.orders.map(function(o){
+      var st = o.status, cls = st === 'paid' || st === 'shipped' ? st : '';
+      return '<div class="card"><div class="row" style="justify-content:space-between"><h2>' + esc(o.id) + '</h2><span class="pill ' + cls + '">' + esc(st) + '</span></div>'
+        + '<div>' + o.items.map(function(i){ return esc(i.name) + (i.size ? ' (Size ' + esc(i.size) + ')' : '') + ' · Rs ' + i.price; }).join('<br>') + '</div>'
+        + '<div><b>Total Rs ' + o.total + '</b></div><div class="muted">' + esc(o.name) + ' · ' + esc(o.phone) + '<br>' + esc(o.address) + ', ' + esc(o.city) + ' ' + esc(o.pincode) + '<br>' + new Date(o.at).toLocaleString() + '</div>'
+        + '<div class="row">' + (st === 'awaiting payment' ? '<button class="btn small pop" data-o="' + esc(o.id) + '" data-s="paid">Payment received</button>' : '')
+        + (st === 'paid' ? '<button class="btn small pop" data-o="' + esc(o.id) + '" data-s="shipped">Mark shipped</button>' : '')
+        + (st !== 'cancelled' && st !== 'shipped' ? '<button class="btn small line" data-o="' + esc(o.id) + '" data-s="cancelled">Cancel and relist</button>' : '') + '</div></div>';
+    }).join('');
+  }).catch(function(err){ el.innerHTML = '<div class="msg bad">' + esc(err.message) + '</div>'; }); }
+function loadStock(){ var el = $('stock'); el.innerHTML = '<div class="muted">Loading…</div>';
+  api('/api/admin/products').then(function(d){
+    if (!d.products.length) { el.innerHTML = '<div class="card muted">No stock yet. Add your first piece in the Add stock tab.</div>'; return; }
+    el.innerHTML = d.products.map(function(p){
+      var mine = /^p[a-z0-9]+$/.test(p.id);
+      return '<div class="card"><div class="row">' + (p.photo ? '<img class="pic" src="' + esc(p.photo) + '" alt="">' : '<div class="pic"></div>')
+        + '<div style="flex:1;min-width:0"><b>' + esc(p.name) + '</b><div class="muted">' + [p.size ? 'Size ' + esc(p.size) : '', esc(p.condition || ''), 'Rs ' + p.price].filter(Boolean).join(' · ') + '</div></div>'
+        + '<span class="pill ' + (p.sold ? '' : 'paid') + '">' + (p.sold ? 'sold' : 'on sale') + '</span></div>'
+        + '<div class="row"><button class="btn small line" data-p="' + esc(p.id) + '" data-sold="' + (p.sold ? '0' : '1') + '">' + (p.sold ? 'Put back on sale' : 'Mark as sold') + '</button>'
+        + (mine ? '<button class="btn small line" data-del="' + esc(p.id) + '">Delete</button>' : '') + '</div></div>';
+    }).join('');
+  }).catch(function(err){ el.innerHTML = '<div class="msg bad">' + esc(err.message) + '</div>'; }); }
+var armed = '';
+document.addEventListener('click', function(e){ var t = e.target.closest('button[data-o],button[data-p],button[data-del]'); if (!t) return;
+  if (t.dataset.o) { api('/api/admin/order-status', { id: t.dataset.o, status: t.dataset.s }).then(loadOrders); return; }
+  if (t.dataset.p) { api('/api/admin/sold', { productId: t.dataset.p, sold: t.dataset.sold === '1' }).then(loadStock); return; }
+  // Deleting asks for a second tap instead of a pop-up.
+  if (armed !== t.dataset.del) { armed = t.dataset.del; t.textContent = 'Tap again to delete'; return; }
+  armed = ''; api('/api/admin/product-delete', { id: t.dataset.del }).then(loadStock);
+});
+</script>
+</body>
+</html>

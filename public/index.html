@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta property="og:site_name" content="The Mountain Thrifters">
+<meta name="theme-color" content="#0C2714">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Store","name":"The Mountain Thrifters","url":"https://mountainthrifters.com/","description":"Thrifted ski, snow and trek wear from Manali, delivered across India.","address":{"@type":"PostalAddress","addressLocality":"Manali","addressRegion":"Himachal Pradesh","addressCountry":"IN"},"sameAs":["https://www.instagram.com/mountain_thrifters/"]}</script>
 <meta name="description" content="Thrifted ski, snow and trek wear from Manali. One of each, nothing new made, delivered across India.">
-<title>The Mountain Thrifters</title>
+<title>The Mountain Thrifters · Thrifted ski and snow wear from Manali</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Mali:wght@500;700&display=swap">
 <style>
 /* Layout: one column of roomy rounded panels on cream; forest-green blocks carry the brand moments; phone gets a bottom tab bar. */
@@ -32,6 +35,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 .stage .photo{width:min(420px,100%);margin:0;border-radius:18px}
 .item .photo{width:64px;flex:none;margin:0;border-radius:10px}
 .ig .photo{margin:0;border-radius:0;height:100%}
+.ig a{position:relative}
 pre.note{white-space:pre-wrap;font-family:inherit;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.5;padding-bottom:76px}
 a{color:inherit}
@@ -138,9 +142,9 @@ footer{padding-block:36px;font-size:15px;color:var(--muted);display:flex;flex-wr
 <body>
 
 <header><div class="wrap bar">
-  <a class="brand" href="#home" id="brandLink"></a>
+  <a class="brand" href="/" id="brandLink"></a>
   <nav class="top" aria-label="Main" id="topNav"></nav>
-  <a class="bagbtn" href="#bag" id="bagBtn"></a>
+  <a class="bagbtn" href="/bag" id="bagBtn"></a>
 </div></header>
 <main class="wrap" id="view"></main>
 <div class="wrap"><footer><div>The Mountain Thrifters · Thrifted in Manali, delivered across India</div><div id="footIg"></div></footer></div>
@@ -181,29 +185,29 @@ function logo(){ return '<svg viewBox="0 0 400 340" role="img" aria-label="The M
  +'<rect x="112" y="291" width="188" height="26" rx="6" fill="#04140A"/><rect x="108" y="286" width="188" height="26" rx="6" fill="#F5F0DF"/><circle cx="124" cy="299" r="5.5" fill="#1E8E4A"/><rect x="133" y="293.5" width="11" height="11" fill="#1F5BD8"/><path d="M154 293 160 299 154 305 148 299Z" fill="#0C2714"/><text x="166" y="303" font-family="Instrument Sans,sans-serif" font-weight="600" font-size="10.5" letter-spacing="1" fill="#0C2714">EASY ON THE PLANET</text></svg>'; }
 
 function card(p){ var inBag = bag.indexOf(p.id) > -1;
-  return '<a class="card" href="#p-'+p.id+'"><div class="top hand"><span>'+CONDS[p.cond][0].toLowerCase()+'</span><span>'+(p.sold?'sold':inBag?'in your bag':'1 of 1')+'</span></div>'+art(p)+'<b>'+esc(p.name)+'</b><span class="muted" style="font-size:15px">Size '+p.size+'</span><span class="price" style="margin-top:8px">'+rs(p.price)+'</span></a>'; }
+  return '<a class="card" href="/p/'+p.id+'"><div class="top hand"><span>'+CONDS[p.cond][0].toLowerCase()+'</span><span>'+(p.sold?'sold':inBag?'in your bag':'1 of 1')+'</span></div>'+art(p)+'<b>'+esc(p.name)+'</b><span class="muted" style="font-size:15px">Size '+p.size+'</span><span class="price" style="margin-top:8px">'+rs(p.price)+'</span></a>'; }
 function igLink(){ return IG_HANDLE ? 'https://www.instagram.com/'+encodeURIComponent(IG_HANDLE)+'/' : ''; }
 
 var V = {};
 V.home = function(){
   var ig = igLink(), tiles = '';
-  P.slice(0,6).forEach(function(p){ tiles += '<a '+(ig?'href="'+ig+'" target="_blank" rel="noopener"':'href="#home"')+' aria-label="Instagram post placeholder">'+art(p,'')+'</a>'; });
+  P.slice(0,6).forEach(function(p){ tiles += '<a '+(ig?'href="'+ig+'" target="_blank" rel="noopener"':'href="/"')+' aria-label="Instagram post placeholder">'+art(p,'')+'</a>'; });
   return '<section class="hero"><div class="stack" style="gap:18px"><div class="hand" style="color:var(--muted)">thrifted in the himalaya, worn everywhere</div>'
   +'<h1>Mountain fits that <span class="mark">already exist.</span></h1><p class="muted" style="font-size:19px;max-width:30em">Thrifted ski, snow and trek wear. One of each, nothing new made, delivered anywhere in India.</p>'
-  +'<div class="row" style="align-items:center"><a class="btn" href="#shop">Shop the drop</a><a href="#sell" style="font-weight:600;padding:12px 4px">Sell with us</a></div></div>'
+  +'<div class="row" style="align-items:center"><a class="btn" href="/shop">Shop the drop</a><a href="/sell" style="font-weight:600;padding:12px 4px">Sell with us</a></div></div>'
   +'<div class="logoblock"><div class="string"></div>'+logo()+'</div></section>'
   +'<section><div class="head"><h2>Shop by vibe.</h2></div><div class="row">'
-  +VIBES.map(function(v,i){ var notes=['colour-block, loud','shells, cargos, tech','big, warm, cropped','half-zips, layers']; return '<a class="vibe '+(i===1?'dark':i===2?'pop':'')+'" href="#shop" data-vibe="'+i+'"><span class="hand" style="font-size:14px">'+notes[i]+'</span><b>'+v+'</b></a>'; }).join('')+'</div></section>'
-  +'<section><div class="head"><h2>Live now.</h2><a href="#shop" style="font-weight:600;padding:12px 0">See everything</a></div><div class="grid">'+P.slice(0,4).map(card).join('')+'</div></section>'
+  +VIBES.map(function(v,i){ var notes=['colour-block, loud','shells, cargos, tech','big, warm, cropped','half-zips, layers']; return '<a class="vibe '+(i===1?'dark':i===2?'pop':'')+'" href="/shop" data-vibe="'+i+'"><span class="hand" style="font-size:14px">'+notes[i]+'</span><b>'+v+'</b></a>'; }).join('')+'</div></section>'
+  +'<section><div class="head"><h2>Live now.</h2><a href="/shop" style="font-weight:600;padding:12px 0">See everything</a></div><div class="grid">'+P.slice(0,4).map(card).join('')+'</div></section>'
   +'<section><div class="popblock"><div><div class="hand">new pieces land every week</div><h2 style="font-size:clamp(28px,5vw,40px);margin-top:4px">New drops land on Instagram first.</h2></div>'
   +'<div><a class="btn" href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Follow for drop alerts</a></div></div></section>'
   +'<section><div class="block"><div class="hand muted">why thrift</div><h2 style="margin-top:6px;max-width:16em">The most sustainable jacket is the one that <span style="color:var(--pop)">already exists.</span></h2>'
   +'<p class="muted" style="margin-top:14px;max-width:34em">Every piece here was made once and is being worn again. No new fabric, no new factory run, no overstock.</p>'
   +'<div class="facts"><div><b>0</b><span class="muted">new garments made</span></div><div><b>1 of 1</b><span class="muted">every piece is the only one</span></div><div><b>100%</b><span class="muted">thrifted stock</span></div></div></div></section>'
   +'<section><div class="head"><h2>Fresh off our Instagram.</h2>'+(ig?'<a href="'+ig+'" target="_blank" rel="noopener" style="font-weight:600;padding:12px 0">Follow @'+esc(IG_HANDLE)+'</a>':'<span class="hand muted">your handle goes here</span>')+'</div>'
-  +'<div class="ig">'+tiles+'</div><p class="muted" style="margin-top:12px;font-size:15px">'+(ig?'Tap any tile to open our Instagram.':'These tiles are stand-ins. Once your Instagram account is connected, your latest posts fill this row automatically.')+'</p></section>'
-  +'<section><div class="head"><h2>Sell with us.</h2></div><div class="row"><div class="door"><span class="hand muted">for you</span><h3>Got a jacket you’re done with?</h3><p class="muted">Send a photo, get an offer, get paid by UPI once it’s checked.</p><a class="btn" href="#sell" data-sell="one">Get an offer</a></div>'
-  +'<div class="door"><span class="hand muted">for suppliers</span><h3>Got a hundred?</h3><p class="muted">Rental shops, thrift sellers and bulk lots. Reach buyers across India.</p><a class="btn line" href="#sell" data-sell="bulk">Partner with us</a></div></div></section>';
+  +'<div class="ig" id="igRow">'+tiles+'</div><p style="margin-top:12px"><a href="/feed" style="font-weight:600;padding:12px 0;display:inline-block">See the whole feed</a></p><p class="muted" style="margin-top:12px;font-size:15px">'+(ig?'Tap any tile to open our Instagram.':'These tiles are stand-ins. Once your Instagram account is connected, your latest posts fill this row automatically.')+'</p></section>'
+  +'<section><div class="head"><h2>Sell with us.</h2></div><div class="row"><div class="door"><span class="hand muted">for you</span><h3>Got a jacket you’re done with?</h3><p class="muted">Send a photo, get an offer, get paid by UPI once it’s checked.</p><a class="btn" href="/sell" data-sell="one">Get an offer</a></div>'
+  +'<div class="door"><span class="hand muted">for suppliers</span><h3>Got a hundred?</h3><p class="muted">Rental shops, thrift sellers and bulk lots. Reach buyers across India.</p><a class="btn line" href="/sell" data-sell="bulk">Partner with us</a></div></div></section>';
 };
 V.shop = function(){
   var list = P.filter(function(p){ return (filt.vibe<0||p.vibe===filt.vibe) && (!filt.size||p.size===filt.size); });
@@ -217,27 +221,39 @@ V.shop = function(){
 V.product = function(id){
   var p = P.filter(function(x){return x.id===id;})[0]; if(!p) return V.shop();
   var inBag = bag.indexOf(p.id) > -1;
-  return '<p class="muted" style="font-size:15px;padding-top:16px"><a href="#shop" style="padding:12px 0;display:inline-block">Shop</a> / '+VIBES[p.vibe]+'</p><div class="pdp"><div><div class="stage"><span class="tag">'+(p.sold?'sold':'1 of 1')+'</span>'+art(p,'')+'</div></div>'
+  return '<p class="muted" style="font-size:15px;padding-top:16px"><a href="/shop" style="padding:12px 0;display:inline-block">Shop</a> / '+VIBES[p.vibe]+'</p><div class="pdp"><div><div class="stage"><span class="tag">'+(p.sold?'sold':'1 of 1')+'</span>'+art(p,'')+'</div>'+(p.photos.length>1?'<div class="row" style="gap:10px">'+p.photos.slice(1).map(function(u){return '<div style="flex:1 1 90px;min-width:0"><img class="photo" style="margin:0" src="'+esc(u)+'" alt="'+esc(p.name)+'" loading="lazy"></div>';}).join('')+'</div>':'')+'</div>'
   +'<div><div class="hand muted">thrifted in the himalaya ~ nothing new made</div><h1 style="font-size:clamp(34px,6vw,50px)">'+esc(p.name)+'</h1><div class="price" style="font-size:26px">'+rs(p.price)+'</div>'
   +'<div class="box"><div style="display:flex;justify-content:space-between;gap:12px;font-weight:600"><span>Condition</span>'+cond(p.cond)+'</div><div class="row muted" style="gap:14px;font-size:13px;margin-top:10px">'+[0,1,2].map(cond).join('')+'</div></div>'
   +'<div class="box" style="display:flex;justify-content:space-between;font-weight:600"><span>Size</span><span>'+p.size+'</span></div>'
   +(p.sold?'<div class="note">This one has sold. Every piece is one of one.</div>':'<button class="btn wide '+(inBag?'pop':'')+'" type="button" id="addBtn" data-id="'+p.id+'">'+(inBag?'In your bag. Tap to remove':'Add to bag')+'</button><button class="btn line wide" type="button" id="buyBtn" data-id="'+p.id+'">Buy now</button>')
-  +'<div><div class="kv"><span>Washed and checked</span><span>Zips, seams, waterproofing</span></div><div class="kv"><span>Payment</span><span>UPI, confirmed in our Instagram chat</span></div><div class="kv"><span>Delivery</span><span>Anywhere in India</span></div></div></div></div>';
+  +(p.description?'<p class="muted">'+esc(p.description)+'</p>':'')
+  +'<div><div class="kv"><span>Washed and checked</span><span>Zips, seams, waterproofing</span></div><div class="kv"><span>Payment</span><span>UPI</span></div><div class="kv"><span>Delivery</span><span>Anywhere in India</span></div></div></div></div>';
 };
 function total(){ return bag.reduce(function(s,id){ var p=P.filter(function(x){return x.id===id;})[0]; return s+(p?p.price:0); },0); }
 function lines(rm){ return bag.map(function(id){ var p=P.filter(function(x){return x.id===id;})[0]; return '<div class="item">'+art(p,'')+'<div><b>'+esc(p.name)+'</b><div class="muted" style="font-size:15px">Size '+p.size+' · '+CONDS[p.cond][0]+'</div></div><div style="text-align:right"><div class="price">'+rs(p.price)+'</div>'+(rm?'<button class="x" type="button" data-rm="'+id+'">Remove</button>':'')+'</div></div>'; }).join(''); }
 V.bag = function(){
-  if(!bag.length) return '<section class="narrow stack"><h2 style="font-size:40px">Your bag is empty.</h2><p class="muted">Every piece is one of one, so grab it when you see it.</p><div><a class="btn" href="#shop">Browse the shop</a></div></section>';
-  return '<section class="narrow stack"><h2 style="font-size:40px">Your bag.</h2>'+lines(true)+'<div class="kv" style="font-weight:600"><span>Subtotal</span><span class="price" style="color:var(--ink)">'+rs(total())+'</span></div><a class="btn wide" href="#checkout">Order on Instagram</a><a href="#shop" style="text-align:center;padding:12px">Keep shopping</a></section>';
+  if(!bag.length) return '<section class="narrow stack"><h2 style="font-size:40px">Your bag is empty.</h2><p class="muted">Every piece is one of one, so grab it when you see it.</p><div><a class="btn" href="/shop">Browse the shop</a></div></section>';
+  return '<section class="narrow stack"><h2 style="font-size:40px">Your bag.</h2>'+lines(true)+'<div class="kv" style="font-weight:600"><span>Subtotal</span><span class="price" style="color:var(--ink)">'+rs(total())+'</span></div><a class="btn wide" href="/checkout">Checkout</a><a href="/shop" style="text-align:center;padding:12px">Keep shopping</a></section>';
 };
 V.checkout = function(){
+  if(done){ var d=done; done=null;
+    var link = d.upiId ? 'upi://pay?pa='+encodeURIComponent(d.upiId)+'&pn='+encodeURIComponent(d.upiName||'')+'&am='+d.total+'&cu=INR&tn='+encodeURIComponent('Order '+d.orderId) : '';
+    return '<section class="narrow stack"><div class="hand muted">order '+esc(d.orderId)+' ~ held for you</div><h2 style="font-size:40px">Thanks, '+esc(d.name)+'. One step left: pay '+rs(d.total)+' by UPI.</h2>'
+    +(d.upiId ? '<div class="box stack" style="gap:10px"><div class="muted">Pay to this UPI ID</div><div style="font-weight:700;font-size:22px;word-break:break-all">'+esc(d.upiId)+'</div><div class="muted">Amount: <b style="color:var(--ink)">'+rs(d.total)+'</b> ~ Note: <b style="color:var(--ink)">Order '+esc(d.orderId)+'</b></div>'
+      +'<a class="btn wide" href="'+link+'">Open my UPI app</a><button class="btn line wide" type="button" id="copyUpi" data-upi="'+esc(d.upiId)+'">Copy UPI ID</button><div id="upiMsg" role="status" class="muted" style="text-align:center;font-size:15px"></div></div>'
+      : '<div class="note">We will message you the payment details on WhatsApp.</div>')
+    +'<p class="muted">We have your order and the pieces are held for you. Once the payment arrives we confirm on your mobile number and ship.</p><div><a class="btn line" href="/shop">Back to the shop</a></div></section>'; }
   if(!bag.length) return V.bag();
-  var msg = 'Hi! I would like to order:\n' + bag.map(function(id){ var p=P.filter(function(x){return x.id===id;})[0]; return '- '+p.name+' (Size '+p.size+') '+rs(p.price); }).join('\n') + '\nTotal: '+rs(total())+'\nMy pincode: ';
-  return '<section class="narrow stack"><h2 style="font-size:40px">Order on Instagram.</h2>'+lines(false)
+  return '<section class="narrow"><h2 style="font-size:40px;margin-bottom:18px">Checkout.</h2><form class="stack" id="coForm" novalidate>'+lines(false)
   +'<div class="kv" style="font-weight:600"><span>Total</span><span class="price" style="color:var(--ink)">'+rs(total())+'</span></div>'
-  +'<p class="muted">Send us this message. We confirm the piece is still available, then share a UPI payment request in the chat.</p>'
-  +'<pre class="note" id="orderMsg">'+esc(msg)+'</pre>'
-  +'<a class="btn wide" id="igOrder" href="https://ig.me/m/mountain_thrifters" target="_blank" rel="noopener">Copy message and open Instagram</a><div id="copyMsg" role="status" class="muted" style="text-align:center;font-size:15px"></div></section>';
+  +'<div class="two"><label for="coName">Full name<input id="coName" type="text" autocomplete="name"></label><label for="coPhone">Mobile number<input id="coPhone" type="tel" inputmode="numeric" autocomplete="tel"></label></div>'
+  +'<div class="two"><label for="coPin">Pincode<input id="coPin" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="6"></label><label for="coCity">City<input id="coCity" type="text" autocomplete="address-level2"></label></div>'
+  +'<label for="coAddr">Address<textarea id="coAddr" rows="2" autocomplete="street-address"></textarea></label>'
+  +'<div class="err" id="coErr" role="alert"></div><button class="btn wide" type="submit">Place order</button><p class="muted" style="font-size:14px;text-align:center">You pay by UPI on the next step. Your pieces are held as soon as you place the order.</p></form></section>';
+};
+V.feed = function(){
+  return '<section><div class="head"><h2>Our Instagram.</h2><a href="https://www.instagram.com/'+encodeURIComponent(IG_HANDLE)+'/" target="_blank" rel="noopener" style="font-weight:600;padding:12px 0">Follow @'+esc(IG_HANDLE)+'</a></div>'
+  +(IGP.length ? '<div class="ig">'+igTiles(IGP)+'</div>'+(IGNEXT?'<div style="text-align:center;padding-top:20px"><button class="btn line" type="button" id="moreIg">Load more</button></div>':'') : '<div class="note">Our posts appear here. For now, see them on Instagram.</div>')+'</section>';
 };
 V.sell = function(){
   return '<section class="narrow stack"><h2 style="font-size:40px">Sell with us.</h2><p class="muted">Your gear keeps going, you get paid. From one jacket to a whole storeroom.</p>'
@@ -248,30 +264,35 @@ V.sell = function(){
   +'<a class="btn wide" href="https://ig.me/m/mountain_thrifters" target="_blank" rel="noopener">Message us on Instagram</a></section>';
 };
 
-function route(){ var h=(location.hash||'#home').slice(1); if(h.indexOf('p-')===0) return ['product',parseInt(h.slice(2),10)]; return [V[h]?h:'home']; }
+function route(){ var path=location.pathname.replace(/\/+$/,'')||'/'; if(path.indexOf('/p/')===0) return ['product',decodeURIComponent(path.slice(3))]; var h=path==='/'?'home':path.slice(1); return [V[h]?h:'home']; }
+function go(p){ history.pushState(null,'',p); render(); }
 function chrome(cur){
   document.getElementById('brandLink').innerHTML = icon(44,'var(--ink)','var(--block-2)')+'<span>THE MOUNTAIN<br>THRIFTERS</span>';
   var items=[['home','Home'],['shop','Shop'],['sell','Sell'],['bag','Bag']], sec = cur==='product'?'shop':cur==='checkout'?'bag':cur;
-  document.getElementById('topNav').innerHTML = items.slice(0,3).map(function(i){return '<a href="#'+i[0]+'"'+(sec===i[0]?' aria-current="page"':'')+'>'+i[1]+'</a>';}).join('');
+  document.getElementById('topNav').innerHTML = items.slice(0,3).map(function(i){return '<a href="'+(i[0]==='home'?'/':'/'+i[0])+'"'+(sec===i[0]?' aria-current="page"':'')+'>'+i[1]+'</a>';}).join('');
   document.getElementById('bagBtn').innerHTML = 'Bag <span style="font-variant-numeric:tabular-nums">('+bag.length+')</span>';
-  document.getElementById('tabs').innerHTML = items.map(function(i){return '<a href="#'+i[0]+'"'+(sec===i[0]?' aria-current="page"':'')+'><b style="font-size:17px;line-height:1">'+(i[0]==='bag'?bag.length:{home:'⌂',shop:'▦',sell:'⇄'}[i[0]])+'</b>'+i[1]+'</a>';}).join('');
+  document.getElementById('tabs').innerHTML = items.map(function(i){return '<a href="'+(i[0]==='home'?'/':'/'+i[0])+'"'+(sec===i[0]?' aria-current="page"':'')+'><b style="font-size:17px;line-height:1">'+(i[0]==='bag'?bag.length:{home:'⌂',shop:'▦',sell:'⇄'}[i[0]])+'</b>'+i[1]+'</a>';}).join('');
   document.getElementById('footIg').textContent = IG_HANDLE ? '@'+IG_HANDLE : 'Instagram handle to be added';
 }
-function render(keep){ var r=route(), el=document.getElementById('view'); el.innerHTML = V[r[0]](r[1]); chrome(r[0]);
+var TITLES={shop:'Shop',bag:'Your bag',checkout:'Checkout',sell:'Sell with us',feed:'Instagram feed'};
+function render(keep){ var r=route(), el=document.getElementById('view'); el.innerHTML = V[r[0]](r[1]); chrome(r[0]); paintIg();
+  var pr=r[0]==='product'?P.filter(function(x){return x.id===r[1];})[0]:null; document.title=(pr?pr.name+' \u00b7 ':TITLES[r[0]]?TITLES[r[0]]+' \u00b7 ':'')+'The Mountain Thrifters';
   if(!keep){ el.style.animation='none'; void el.offsetWidth; el.style.animation=''; window.scrollTo(0,0); } }
 function toggle(id){ var i=bag.indexOf(id); if(i>-1) bag.splice(i,1); else bag.push(id); saveBag(); }
 function digits(s){ return (s||'').replace(/\D/g,''); }
 
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-vibe],[data-chip],[data-rm],[data-mode],[data-sell],#addBtn,#buyBtn,#igOrder'); if(!t) return;
+  var t=e.target.closest('[data-vibe],[data-chip],[data-rm],[data-mode],[data-sell],#addBtn,#buyBtn,#moreIg,#copyUpi'); if(!t) return;
   if(t.dataset.vibe!==undefined){ filt.vibe=+t.dataset.vibe; return; }
   if(t.dataset.sell){ sellMode=t.dataset.sell; return; }
   if(t.dataset.chip!==undefined){ filt.vibe=+t.dataset.chip; if(t.id==='clearF') filt.size=''; render(true); return; }
   if(t.dataset.mode){ sellMode=t.dataset.mode; render(true); return; }
-  if(t.dataset.rm){ toggle(+t.dataset.rm); render(true); return; }
-  if(t.id==='addBtn'){ toggle(+t.dataset.id); render(true); return; }
+  if(t.dataset.rm){ toggle(t.dataset.rm); render(true); return; }
+  if(t.id==='addBtn'){ toggle(t.dataset.id); render(true); return; }
   if(t.id==='igOrder'){ var tx=document.getElementById('orderMsg').textContent, cm=document.getElementById('copyMsg'); if(navigator.clipboard){ navigator.clipboard.writeText(tx).then(function(){cm.textContent='Message copied. Paste it in the chat.';},function(){cm.textContent='Copy the message above and paste it in the chat.';}); } else { cm.textContent='Copy the message above and paste it in the chat.'; } return; }
-  if(t.id==='buyBtn'){ var id=+t.dataset.id; if(bag.indexOf(id)<0) toggle(id); location.hash='#checkout'; }
+  if(t.id==='buyBtn'){ var id=t.dataset.id; if(bag.indexOf(id)<0) toggle(id); go('/checkout'); return; }
+  if(t.id==='moreIg'){ loadIg(IGNEXT); return; }
+  if(t.id==='copyUpi'){ var u=t.dataset.upi, cu=document.getElementById('upiMsg'); if(navigator.clipboard){ navigator.clipboard.writeText(u).then(function(){cu.textContent='UPI ID copied.';},function(){cu.textContent='Copy it from above.';}); } else { cu.textContent='Copy it from above.'; } }
 });
 document.addEventListener('change',function(e){
   if(e.target.id==='fSize'){ filt.size=e.target.value; render(true); }
@@ -281,20 +302,43 @@ document.addEventListener('submit',function(e){
   e.preventDefault(); var f=e.target, v=function(id){ var x=document.getElementById(id); return x?x.value.trim():''; };
   if(f.id==='alertForm'){ document.getElementById('alertMsg').textContent = digits(v('alertPhone')).length===10 ? 'Looks good. Alerts switch on when the shop goes live.' : 'Enter a 10-digit mobile number.'; }
   if(f.id==='coForm'){ var err = !v('coName')?'Add your name.':digits(v('coPhone')).length!==10?'Enter a 10-digit mobile number.':digits(v('coPin')).length!==6?'Enter a 6-digit pincode.':!v('coAddr')?'Add your address.':'';
-    if(err){ document.getElementById('coErr').textContent=err; return; } done={name:v('coName').split(' ')[0]}; bag=[]; saveBag(); render(); }
+    if(err){ document.getElementById('coErr').textContent=err; return; } placeOrder({items:bag.slice(),name:v('coName'),phone:digits(v('coPhone')),pincode:digits(v('coPin')),city:v('coCity'),address:v('coAddr')}); }
   if(f.id==='sellForm'){ var er = !v('slName')?'Add a name.':digits(v('slPhone')).length!==10?'Enter a 10-digit WhatsApp number.':'';
     if(er){ document.getElementById('slErr').textContent=er; return; } done={}; render(); }
 });
-window.addEventListener('hashchange',function(){ render(); });
+window.addEventListener('popstate',function(){ render(); });
+// Internal links change the page without a full reload.
+document.addEventListener('click',function(e){
+  if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey) return;
+  var a=e.target.closest('a[href^="/"]'); if(!a||a.target||a.getAttribute('href').indexOf('/admin')===0) return;
+  e.preventDefault(); go(a.getAttribute('href'));
+});
 function norm(x){ var cn=CONDS.map(function(c){return c[0].toLowerCase();}), ci=cn.indexOf(String(x.condition||'').toLowerCase()), vi=VIBES.map(function(v){return v.toLowerCase();}).indexOf(String(x.vibe||'').toLowerCase()), col=x.colors||[];
-  return {id:x.id,name:x.name||'Untitled piece',type:x.type||'jacket',vibe:vi<0?0:vi,size:x.size||'',cond:ci<0?1:ci,price:+x.price||0,c1:col[0]||'#0C2714',c2:col[1]||'#C8FF2E',photo:x.photo||'',sold:!!x.sold}; }
-fetch('products.json',{cache:'no-store'}).then(function(r){ return r.json(); }).then(function(list){
-  P = list.map(norm);
-  bag = bag.filter(function(id){ return P.some(function(p){ return p.id===id && !p.sold; }); }); saveBag();
-  render(true);
-}).catch(function(){
+  return {id:String(x.id),photos:x.photos||[],description:x.description||'',name:x.name||'Untitled piece',type:x.type||'jacket',vibe:vi<0?0:vi,size:x.size||'',cond:ci<0?1:ci,price:+x.price||0,c1:col[0]||'#0C2714',c2:col[1]||'#C8FF2E',photo:x.photo||'',sold:!!x.sold}; }
+function loadProducts(){
+  return fetch('/api/products',{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('api'); return r.json(); })
+    .catch(function(){ return fetch('/products.json',{cache:'no-store'}).then(function(r){ return r.json(); }); })
+    .then(function(list){ P = list.map(norm); bag = bag.map(String).filter(function(id){ return P.some(function(p){ return p.id===id && !p.sold; }); }); saveBag(); });
+}
+var IGP=[], IGNEXT='';
+function igTiles(list){ return list.map(function(p){ return '<a href="'+esc(p.link)+'" target="_blank" rel="noopener"><img class="photo" src="'+esc(p.image)+'" alt="'+esc((p.caption||'Instagram post').slice(0,80))+'" loading="lazy"></a>'; }).join(''); }
+function paintIg(){ var row=document.getElementById('igRow'); if(row&&IGP.length) row.innerHTML=igTiles(IGP.slice(0,6)); }
+function loadIg(after){
+  return fetch('/api/instagram'+(after?'?after='+encodeURIComponent(after):'')).then(function(r){ return r.ok?r.json():{posts:[],next:''}; }).then(function(d){
+    IGP=IGP.concat(d.posts||[]); IGNEXT=d.next||''; if(route()[0]==='feed') render(true); else paintIg();
+  }).catch(function(){});
+}
+function placeOrder(data){
+  var btn=document.querySelector('#coForm button[type=submit]'), err=document.getElementById('coErr'); btn.disabled=true; btn.textContent='Placing your order\u2026';
+  fetch('/api/order',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)}).then(function(r){ return r.json().then(function(b){ return {ok:r.ok,body:b}; }); }).then(function(res){
+    if(res.ok){ done={orderId:res.body.orderId,total:res.body.total,upiId:res.body.upiId,upiName:res.body.upiName,name:data.name.split(' ')[0]}; bag=[]; saveBag(); return loadProducts().then(function(){ render(); }); }
+    var msg=res.body.message||'That did not go through. Please try again.';
+    return loadProducts().then(function(){ render(true); var e2=document.getElementById('coErr'); if(e2) e2.textContent=msg; });
+  }).catch(function(){ btn.disabled=false; btn.textContent='Place order'; err.textContent='No connection. Check your internet and try again.'; });
+}
+loadProducts().then(function(){ render(true); loadIg(''); }).catch(function(){
   chrome('home');
-  document.getElementById('view').innerHTML = '<section><div class="note">The product list could not be loaded. Check that products.json sits next to index.html and is valid.</div></section>';
+  document.getElementById('view').innerHTML = '<section><div class="note">The shop could not load. Please refresh the page.</div></section>';
 });
 </script>
 </body>

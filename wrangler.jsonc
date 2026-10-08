@@ -1,0 +1,13 @@
+{
+  // Must match the name of your existing Worker so the domain stays attached.
+  "name": "odd-field-3683",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-01",
+  "keep_vars": true,
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "mountain-thrifters", "database_id": "0691425b-c3cd-4a5b-9fd6-76b58723ca0d" }
+  ],
+  // Once a week: renew the Instagram access token so the feed keeps working.
+  "triggers": { "crons": ["0 3 * * 1"] }
+}
