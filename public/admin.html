@@ -200,7 +200,9 @@ function fillCats(){
 }
 function fillSubs(){
   var c=cats.filter(function(x){return x.name===$('a-cat').value;})[0],subs=(c&&c.subs)||[];
+  var keepSub=$('a-sub').value;
   $('a-sub').innerHTML=subs.map(function(s){return '<option>'+esc(s)+'</option>';}).join('')||'<option value="">None</option>';
+  if(keepSub&&subs.indexOf(keepSub)>-1)$('a-sub').value=keepSub;
   chipRow('c-sub',subs,$('a-sub').value);
   chipRow('c-size',SIZES[$('a-cat').value]||['One size'],$('a-size').value);
 }
