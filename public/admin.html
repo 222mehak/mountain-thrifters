@@ -74,6 +74,13 @@ th:first-child,td:first-child{text-align:left}
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--edge);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
 nav button{flex:1;min-height:60px;background:none;border:0;font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);cursor:pointer}
 nav button.on{color:var(--pop)}
+.stp{display:flex;align-items:center;gap:10px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:22px;text-transform:uppercase;line-height:1;margin:30px 0 4px;padding-top:20px;border-top:1px solid var(--line)}
+.stp b{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--pop);color:var(--bg);font-size:17px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips:empty{display:none}
+.chips button{min-height:44px;padding:0 14px;background:transparent;border:1px solid var(--edge);cursor:pointer;font-size:15px}
+.chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.miss{outline:2px solid var(--bad);outline-offset:2px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -92,20 +99,33 @@ nav button.on{color:var(--pop)}
 
 <section id="t-add" hidden>
 <h1>Add stock</h1>
+<div class="stp"><b>1</b> Photos</div>
 <div class="shots" id="shots"></div>
 <input id="file" type="file" accept="image/*" multiple hidden>
+<p class="dim" style="margin:8px 0 0">Up to 6. The first photo is the main one.</p>
+
+<div class="stp"><b>2</b> What is it?</div>
+<div class="fl">Category</div><div class="chips" id="c-cat"></div>
+<div class="fl">Type</div><div class="chips" id="c-sub"></div>
+<select id="a-cat" hidden></select><select id="a-sub" hidden></select>
+<label for="a-brand">Brand</label><div class="chips" id="c-brand"></div><input id="a-brand" placeholder="Tap a brand or type a new one" style="margin-top:8px">
 <label for="a-name">Name</label><input id="a-name" placeholder="2-person trekking tent">
-<div class="r2"><div><label for="a-brand">Brand</label><input id="a-brand" list="brandlist" placeholder="Quechua"><datalist id="brandlist"></datalist></div>
-<div><label for="a-price">Selling price (Rs)</label><input id="a-price" inputmode="numeric"></div></div>
-<div class="r2"><div><label for="a-cost">What you paid (Rs)</label><input id="a-cost" inputmode="numeric"></div>
-<div><label for="a-gender">For</label><select id="a-gender"><option>Everyone</option><option>Men</option><option>Women</option></select></div></div>
-<p class="dim" style="margin:6px 0 0">What you paid stays private. It is only used for your profit numbers.</p>
-<div class="r2"><div><label for="a-cat">Category</label><select id="a-cat"></select></div>
-<div><label for="a-sub">Type</label><select id="a-sub"></select></div></div>
-<label for="a-size">Size or capacity</label><input id="a-size" placeholder="M, UK 8, 50 L, 2-person">
+
+<div class="stp"><b>3</b> Size and condition</div>
+<label for="a-size">Size or capacity</label><div class="chips" id="c-size"></div><input id="a-size" placeholder="Tap a size or type your own" style="margin-top:8px">
+<div class="fl">For</div><div class="chips" id="c-gender"></div>
+<select id="a-gender" hidden><option>Everyone</option><option>Men</option><option>Women</option></select>
 <div class="fl">Condition</div>
 <div class="seg" id="a-cond"><button type="button" class="on">Barely worn</button><button type="button">Worn in</button><button type="button">Well loved</button></div>
-<label for="a-desc">Description (optional)</label><textarea id="a-desc" placeholder="Fit, flaws, anything worth knowing"></textarea>
+
+<div class="stp"><b>4</b> Money</div>
+<div class="r2"><div><label for="a-price">Selling price (Rs)</label><input id="a-price" inputmode="numeric"></div>
+<div><label for="a-cost">What you paid (Rs)</label><input id="a-cost" inputmode="numeric"></div></div>
+<p class="dim" style="margin:6px 0 0">What you paid stays private. It is only used for your profit numbers.</p>
+<p class="dim good" id="a-profit" style="margin:4px 0 0"></p>
+
+<div class="stp"><b>5</b> Finish</div>
+<label for="a-desc" style="margin-top:0">Description (optional)</label><textarea id="a-desc" placeholder="Fit, flaws, anything worth knowing"></textarea>
 <label class="tog" for="a-ig"><span>Also post to Instagram</span><input id="a-ig" type="checkbox"></label>
 <button class="btn" id="a-go" type="button">Put it live</button>
 <p class="msg" id="a-msg" role="status"></p>
@@ -160,22 +180,46 @@ function show(tab){
 function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();});}
 $('signin').onclick=function(){
   KEY=$('key').value.trim();
-  api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('add');}).catch(function(e){$('loginmsg').textContent=e.message;});
+  api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('add');loadBrands();}).catch(function(e){$('loginmsg').textContent=e.message;});
 };
 $('tabs').onclick=function(e){var b=e.target.closest('button');if(b)show(b.getAttribute('data-t'));};
 
 // ----- add stock -----
+var SIZES={Clothing:['XS','S','M','L','XL','XXL'],Footwear:['UK 5','UK 6','UK 7','UK 8','UK 9','UK 10','UK 11'],Accessories:['S','M','L','One size'],
+  'Packs and bags':['20 L','30 L','40 L','50 L','60 L','70 L'],Camping:['1-person','2-person','3-person','4-person','Regular'],'Trek essentials':['One size','Adjustable']};
+var brands=[];
+function mem(k,v){try{if(v===undefined)return localStorage.getItem('mt_last_'+k)||'';localStorage.setItem('mt_last_'+k,v);}catch(e){return '';}}
+function chipRow(boxId,values,current){$(boxId).innerHTML=values.map(function(v){return '<button type="button" class="'+(v===current?'on':'')+'" aria-pressed="'+(v===current)+'">'+esc(v)+'</button>';}).join('');}
 function fillCats(){
-  var keep=$('a-cat').value;
+  var keep=$('a-cat').value||mem('cat');
   $('a-cat').innerHTML=cats.map(function(c){return '<option>'+esc(c.name)+'</option>';}).join('');
-  if(keep)$('a-cat').value=keep;
+  if(keep&&cats.some(function(c){return c.name===keep;}))$('a-cat').value=keep;
+  chipRow('c-cat',cats.map(function(c){return c.name;}),$('a-cat').value);
   fillSubs();
 }
 function fillSubs(){
-  var c=cats.filter(function(x){return x.name===$('a-cat').value;})[0];
-  $('a-sub').innerHTML=((c&&c.subs)||[]).map(function(s){return '<option>'+esc(s)+'</option>';}).join('')||'<option value="">None</option>';
+  var c=cats.filter(function(x){return x.name===$('a-cat').value;})[0],subs=(c&&c.subs)||[];
+  $('a-sub').innerHTML=subs.map(function(s){return '<option>'+esc(s)+'</option>';}).join('')||'<option value="">None</option>';
+  chipRow('c-sub',subs,$('a-sub').value);
+  chipRow('c-size',SIZES[$('a-cat').value]||['One size'],$('a-size').value);
 }
-$('a-cat').onchange=fillSubs;
+function drawBrands(){chipRow('c-brand',brands.slice(0,10),$('a-brand').value);}
+function loadBrands(){return api('products').then(function(d){brands=[];d.products.forEach(function(p){if(p.brand&&brands.indexOf(p.brand)<0)brands.push(p.brand);});drawBrands();}).catch(function(){});}
+function pick(boxId,fn){$(boxId).onclick=function(e){var b=e.target.closest('button');if(!b)return;fn(b.textContent);};}
+pick('c-cat',function(v){$('a-cat').value=v;mem('cat',v);$('a-size').value='';fillCats();});
+pick('c-sub',function(v){$('a-sub').value=v;fillSubs();});
+pick('c-size',function(v){$('a-size').value=v;fillSubs();});
+pick('c-brand',function(v){$('a-brand').value=v;drawBrands();});
+pick('c-gender',function(v){$('a-gender').value=v;mem('for',v);drawGender();});
+function drawGender(){chipRow('c-gender',['Everyone','Men','Women'],$('a-gender').value);}
+$('a-size').oninput=fillSubs;$('a-brand').oninput=drawBrands;
+function profitHint(){var p=parseInt($('a-price').value,10),c=parseInt($('a-cost').value,10),el=$('a-profit');
+  if(!p||isNaN(c)){el.textContent='';return;}el.textContent=p>=c?'You make '+rs(p-c)+' on this piece.':'This sells for '+rs(c-p)+' less than you paid.';el.className='dim '+(p>=c?'good':'bad');}
+$('a-price').oninput=$('a-cost').oninput=profitHint;
+if(mem('for'))$('a-gender').value=mem('for');
+drawGender();
+(function(){var c=mem('cond');if(c)[].forEach.call($('a-cond').children,function(x){x.classList.toggle('on',x.textContent===c);});$('a-ig').checked=mem('ig')==='1';})();
+$('a-ig').onchange=function(){mem('ig',this.checked?'1':'0');};
 function drawShots(){
   $('shots').innerHTML=(shots.length<6?'<label class="take" for="file"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>'+(shots.length?'Add more':'Take photos')+'</label>':'')+
     shots.map(function(s,i){return '<div><img src="'+s+'" alt="Photo '+(i+1)+'"><button class="x" type="button" data-x="'+i+'" aria-label="Remove photo '+(i+1)+'">×</button></div>';}).join('');
@@ -198,17 +242,20 @@ $('file').onchange=function(){
   var files=[].slice.call(this.files,0,6-shots.length);this.value='';
   Promise.all(files.map(shrink)).then(function(list){shots=shots.concat(list);drawShots();}).catch(function(e){say('a-msg',e.message,'bad');});
 };
-$('a-cond').onclick=function(e){var b=e.target.closest('button');if(!b)return;[].forEach.call(this.children,function(x){x.classList.toggle('on',x===b);});};
+$('a-cond').onclick=function(e){var b=e.target.closest('button');if(!b)return;[].forEach.call(this.children,function(x){x.classList.toggle('on',x===b);});mem('cond',b.textContent);};
 function say(id,text,kind){var m=$(id);m.textContent=text;m.className='msg '+(kind||'');}
 $('a-go').onclick=function(){
   var btn=this;
   var body={images:shots,name:$('a-name').value,brand:$('a-brand').value,price:$('a-price').value,cost:$('a-cost').value,gender:$('a-gender').value,
     category:$('a-cat').value,sub:$('a-sub').value,size:$('a-size').value,condition:$('a-cond').querySelector('.on').textContent,description:$('a-desc').value,postToInstagram:$('a-ig').checked};
+  var need=[[!shots.length,'shots','Add at least one photo.'],[!body.name.trim(),'a-name','Give it a name.'],[!parseInt(body.price,10),'a-price','Add the selling price.']];
+  document.querySelectorAll('.miss').forEach(function(x){x.classList.remove('miss');});
+  for(var i=0;i<need.length;i++)if(need[i][0]){var el=$(need[i][1]);el.classList.add('miss');el.scrollIntoView({block:'center'});say('a-msg',need[i][2],'bad');return;}
   btn.disabled=true;btn.textContent='Uploading…';say('a-msg','');
   api('product',body).then(function(r){
     var ig=r.instagram==='posted'?' Posted to Instagram too.':(r.instagram&&r.instagram!=='not requested'?' Instagram: '+r.instagram+'.':'');
     say('a-msg','Live on the shop.'+ig,'good');
-    shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc'].forEach(function(i){$(i).value='';});
+    shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc'].forEach(function(i){$(i).value='';});profitHint();fillSubs();loadBrands();window.scrollTo(0,0);
   }).catch(function(e){say('a-msg',e.message,'bad');}).then(function(){btn.disabled=false;btn.textContent='Put it live';});
 };
 
@@ -239,8 +286,6 @@ $('orders').onclick=function(e){
 function loadStock(){
   api('products').then(function(d){
     var hasSamples=d.products.some(function(p){return p.sample;});
-    var brands=[];d.products.forEach(function(p){if(p.brand&&brands.indexOf(p.brand)<0)brands.push(p.brand);});
-    $('brandlist').innerHTML=brands.map(function(b){return '<option value="'+esc(b)+'">';}).join('');
     $('stock').className='';
     $('stock').innerHTML=(hasSamples?'<div class="box"><div>The shop is showing sample pieces.</div><div class="acts"><button class="sm" data-samples="1">Hide sample pieces</button></div></div>':
       d.hideSamples?'<div class="acts" style="margin-bottom:12px"><button class="sm" data-samples="0">Show sample pieces again</button></div>':'')+
@@ -357,7 +402,7 @@ function drawStats(){
 
 drawShots();
 loadConfig().catch(function(){});
-if(KEY)api('orders').then(function(){show('add');}).catch(function(){show('');});else show('');
+if(KEY)api('orders').then(function(){show('add');loadBrands();}).catch(function(){show('');});else show('');
 })();
 </script>
 </body>
