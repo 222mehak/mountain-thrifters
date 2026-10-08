@@ -39,7 +39,8 @@ h3{font-size:26px}
 .btn.wide{width:100%}
 .btn[disabled]{opacity:.5;cursor:default}
 
-header.top{border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:10}
+.hwrap{position:sticky;top:0;z-index:10}
+header.top{border-bottom:1px solid var(--line);background:var(--bg)}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:14px;padding-bottom:14px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:var(--head);font-weight:600;font-size:23px;letter-spacing:.04em;text-transform:uppercase;line-height:1;white-space:nowrap}
 .top nav{display:flex;gap:32px;font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase}
@@ -47,10 +48,13 @@ header.top{border-bottom:1px solid var(--line);position:sticky;top:0;background:
 .top nav a:hover,.top nav a.on{color:var(--pop)}
 .notice{background:var(--s1);border-bottom:1px solid var(--line);color:var(--mute);font-size:13px;text-align:center;padding:8px 16px}
 
-.hero{position:relative;min-height:min(78vh,720px);display:flex;align-items:flex-end;background:linear-gradient(160deg,#2A2F2B 0%,#191C1A 55%,#111312 100%);background-size:cover;background-position:center}
-.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,19,18,.15) 0%,rgba(17,19,18,.82) 100%)}
+.hero{position:relative;min-height:min(86vh,760px);display:flex;align-items:flex-end;overflow:hidden;background:#111312}
+.hero .img{position:absolute;inset:0;background:url(/photos/hero.jpg) 62% 78%/175% no-repeat;filter:grayscale(1) contrast(1.1)}
+.hero::after{content:"";position:absolute;inset:0;background:rgba(17,19,18,.45)}
+body.home .hwrap{height:0;position:relative;z-index:10}
+body.home header.top{position:absolute;top:0;left:0;right:0;background:transparent;border-bottom-color:transparent}
 .hero .wrap{position:relative;z-index:1;width:100%;padding-top:120px;padding-bottom:64px}
-.hero h1{font-size:clamp(56px,10vw,128px);line-height:.92;margin:14px 0 18px}
+.hero h1{font-size:clamp(56px,9vw,96px);line-height:.92;margin:0 0 16px}
 .hero p{max-width:30em;margin:0 0 28px;font-size:18px;color:#D9DBD4}
 .row{display:flex;flex-wrap:wrap;gap:12px}
 
@@ -151,6 +155,7 @@ textarea{min-height:96px;resize:vertical}
 .top nav::-webkit-scrollbar{display:none}
 section{padding:60px 0}
 .hero .wrap{padding-bottom:40px}
+.hero .img{background-size:auto 135%}
 .grid,.grid.three{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .card{padding:8px 8px 14px}
 .card .n{font-size:15px}
@@ -171,7 +176,8 @@ section{padding:60px 0}
 </style>
 </head>
 <body>
-<header class="top">
+<div id="notice"></div>
+<div class="hwrap"><header class="top">
 <div class="wrap">
 <a class="brand" href="/" data-link><svg width="30" height="28" viewBox="8 -8 384 352" aria-hidden="true"><path d="M200 76V58C200 44 222 47 222 28 222 13 211 4 198 4 186 4 176 13 176 25" fill="none" stroke="#EDEBE4" stroke-width="20" stroke-linecap="round"/><path d="M200 76 34 300Q20 326 50 326H350Q380 326 366 300Z" fill="none" stroke="#EDEBE4" stroke-width="20" stroke-linejoin="round"/><path d="M200 108 162 160 182 170 200 150 218 170 238 160Z" fill="#E8623A"/></svg>The Mountain Thrifters</a>
 <nav aria-label="Main">
@@ -182,8 +188,7 @@ section{padding:60px 0}
 <a href="/bag" data-link data-nav="bag">Bag (<span id="bagn">0</span>)</a>
 </nav>
 </div>
-</header>
-<div id="notice"></div>
+</header></div>
 <main id="app"><div class="wrap page mute">Loading the gear room…</div></main>
 <footer>
 <div class="wrap">
@@ -247,9 +252,9 @@ function home(){
     return '<a href="/c/'+slug(c.name)+'" data-link><h3>'+esc(c.name)+'</h3><span>'+esc((c.subs||[]).slice(0,3).join(', '))+'</span></a>';
   }).join('');
   app.innerHTML=
-  '<div class="hero" id="hero"><div class="wrap"><div class="eye">Thrifted in Manali. Delivered across India.</div>'+
-  '<h1>Good gear.<br>Fair prices.</h1><p>Jackets, boots, packs and tents from the brands you know, thrifted and new, at fair prices.</p>'+
-  '<div class="row"><a class="btn pop" href="/shop?for=Men" data-link>Shop men\'s</a><a class="btn" href="/shop?for=Women" data-link>Shop women\'s</a><a class="btn ghost" href="/shop" data-link>Shop all</a></div></div></div>'+
+  '<div class="hero" id="hero"><div class="img"></div><div class="wrap">'+
+  '<h1>Good gear.<br>Fair prices.</h1><p>Mountain gear from the brands you know, thrifted and new.</p>'+
+  '<div class="row"><a class="btn pop" href="/shop?for=Men" data-link>Shop men\'s</a><a class="btn" href="/shop?for=Women" data-link>Shop women\'s</a></div></div></div>'+
   '<section><div class="wrap"><div class="shead"><div><div class="eye">Just landed</div><h2>New in the gear room</h2></div><a class="more" href="/shop" data-link>See everything</a></div>'+
   (fresh.length?'<div class="grid">'+fresh.map(card).join('')+'</div>':'<div class="empty">New pieces land every week. Check back soon.</div>')+'</div></section>'+
   (cats?'<section style="padding-top:0"><div class="wrap"><div class="shead"><div><div class="eye">Everything for the trail</div><h2>Shop by category</h2></div></div><div class="cats">'+cats+'</div></div></section>':'')+
@@ -260,7 +265,6 @@ function home(){
   '<section style="padding-top:0"><div class="wrap"><div class="shead"><div><div class="eye">Sell with us</div><h2>Got gear sitting idle?</h2></div><a class="btn ghost" href="/sell" data-link>Sell your gear</a></div>'+
   '<div class="cols"><div><h3>1. Send photos</h3><p>Tell us what you have. One jacket or a whole lot.</p></div><div><h3>2. Get an offer</h3><p>We reply on WhatsApp with a price.</p></div><div><h3>3. Get paid</h3><p>We pay by UPI and give it a second life.</p></div></div></div></section>'+
   '<section style="padding-top:0" id="igrow" hidden><div class="wrap"><div class="shead"><div><div class="eye">@mountain_thrifters</div><h2>On Instagram</h2></div><a class="more" href="/feed" data-link>See the feed</a></div><div class="ig" id="igr"></div></div></section>';
-  var im=new Image();im.onload=function(){var h=document.getElementById('hero');if(h)h.style.backgroundImage='url(/photos/hero.jpg)';};im.src='/photos/hero.jpg';
   (S.ig?Promise.resolve():loadIg('')).then(function(){
     var el=document.getElementById('igr');if(!el||!S.ig.length)return;
     el.innerHTML=S.ig.slice(0,6).map(igTile).join('');document.getElementById('igrow').hidden=false;
@@ -406,6 +410,7 @@ function drawFeed(){
 var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Instagram feed',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
 function render(){
   var path=location.pathname.replace(/\/+$/,'')||'/',name=path.split('/')[1]||'home';
+  document.body.classList.toggle('home',path==='/');
   document.querySelectorAll('[data-nav]').forEach(function(a){a.classList.toggle('on',a.getAttribute('data-nav')===name);});
   if(path==='/')home();
   else if(path==='/shop'||path.indexOf('/c/')===0)shop();
