@@ -244,7 +244,7 @@ function soldLast(list){return list.filter(function(p){return !p.sold;}).concat(
 function home(){
   var fresh=soldLast(S.products).slice(0,4);
   var cats=S.cats.slice(0,6).map(function(c){
-    return '<a href="/shop?cat='+encodeURIComponent(c.name)+'" data-link><h3>'+esc(c.name)+'</h3><span>'+esc((c.subs||[]).slice(0,3).join(', '))+'</span></a>';
+    return '<a href="/c/'+slug(c.name)+'" data-link><h3>'+esc(c.name)+'</h3><span>'+esc((c.subs||[]).slice(0,3).join(', '))+'</span></a>';
   }).join('');
   app.innerHTML=
   '<div class="hero" id="hero"><div class="wrap"><div class="eye">Thrifted in Manali. Delivered across India.</div>'+
@@ -270,7 +270,11 @@ function igTile(p){return '<a href="'+esc(p.link)+'" target="_blank" rel="noopen
 
 // ----- shop -----
 var KEYS=['for','cat','sub','brand','size','cond','sort'];
-function getF(){var q=new URLSearchParams(location.search),f={};KEYS.forEach(function(k){f[k]=q.get(k)||'';});return f;}
+function slug(v){return String(v).toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+function getF(){var q=new URLSearchParams(location.search),f={};KEYS.forEach(function(k){f[k]=q.get(k)||'';});
+  if(location.pathname.indexOf('/c/')===0){var s=location.pathname.slice(3).replace(/\/+$/,'');
+    S.cats.forEach(function(c){if(slug(c.name)===s){f.cat=c.name;}(c.subs||[]).forEach(function(x){if(!f.cat&&slug(x)===s){f.cat=c.name;f.sub=x;}});});}
+  return f;}
 function setF(f){var q=new URLSearchParams();KEYS.forEach(function(k){if(f[k])q.set(k,f[k]);});var s=q.toString();history.replaceState(null,'','/shop'+(s?'?'+s:''));shop(true);}
 function match(p,f,skip){
   if(skip!=='for'&&f['for']&&p.gender&&p.gender!=='Everyone'&&p.gender!==f['for'])return false;
@@ -303,7 +307,7 @@ function shop(keepOpen){
   var active=KEYS.filter(function(k){return f[k]&&k!=='sort';}).length;
   var was=document.getElementById('filters');
   var open=keepOpen&&was?was.open:window.innerWidth>900;
-  app.innerHTML='<div class="wrap page"><div class="shead"><div><div class="eye">The gear room</div><h1 style="margin-top:10px">'+esc(f.cat||(f['for']?f['for']+"'s gear":'Shop gear'))+'</h1></div><div class="dim" aria-live="polite">'+list.length+' of '+all.length+' pieces</div></div>'+
+  app.innerHTML='<div class="wrap page"><div class="shead"><div><div class="eye">The gear room</div><h1 style="margin-top:10px">'+esc(f.sub||f.cat||(f['for']?f['for']+"'s gear":'Shop gear'))+'</h1></div><div class="dim" aria-live="polite">'+list.length+' of '+all.length+' pieces</div></div>'+
   '<div class="shop"><details class="filters" id="filters"'+(open?' open':'')+'><summary><span>Filter and sort'+(active?' ('+active+')':'')+'</span><span aria-hidden="true">+</span></summary><div class="in">'+
   group('Sort by',opt('sort','','Newest',!f.sort)+opt('sort','low','Price: low to high',f.sort==='low')+opt('sort','high','Price: high to low',f.sort==='high'))+
   group('For',opt('for','','Everyone',!f['for'])+opt('for','Men',"Men's",f['for']==='Men')+opt('for','Women',"Women's",f['for']==='Women'))+
@@ -404,7 +408,7 @@ function render(){
   var path=location.pathname.replace(/\/+$/,'')||'/',name=path.split('/')[1]||'home';
   document.querySelectorAll('[data-nav]').forEach(function(a){a.classList.toggle('on',a.getAttribute('data-nav')===name);});
   if(path==='/')home();
-  else if(path==='/shop')shop();
+  else if(path==='/shop'||path.indexOf('/c/')===0)shop();
   else if(path.indexOf('/p/')===0)product(decodeURIComponent(path.slice(3)));
   else if(path==='/bag')bagView();
   else if(path==='/checkout')checkout();
@@ -412,7 +416,10 @@ function render(){
   else if(path==='/sell')sell();
   else if(path==='/feed')feed();
   else home();
-  if(TITLES[name])document.title=TITLES[name]+' · The Mountain Thrifters';
+  if(name==='c'||name==='p')name='shop';
+  document.querySelectorAll('[data-nav]').forEach(function(a){a.classList.toggle('on',a.getAttribute('data-nav')===name);});
+  if(path.indexOf('/c/')===0){var cf=getF();if(cf.cat)document.title='Thrifted '+(cf.sub||cf.cat).toLowerCase()+' in India · The Mountain Thrifters';}
+  else if(TITLES[name])document.title=TITLES[name]+' · The Mountain Thrifters';
   if(location.hash){var t=document.getElementById(location.hash.slice(1));if(t){t.scrollIntoView();return;}}
 }
 function go(url,replace){history[replace?'replaceState':'pushState'](null,'',url);render();if(!location.hash)window.scrollTo(0,0);}

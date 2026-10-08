@@ -371,10 +371,27 @@ async function admin(request, env, path, ctx) {
 
 // ---------- Pages, photos and search-engine files ----------
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const PAGES = { '/': null, '/shop': ['Shop thrifted outdoor gear', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Filter by brand, size and category. Delivered across India.'],
+const SITE = 'https://mountainthrifters.com';
+const slug = (v) => String(v).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const rupees = (n) => 'Rs ' + Number(n || 0).toLocaleString('en-IN');
+const PAGES = { '/': ['Thrifted outdoor gear from Manali, delivered across India', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. One of each, nothing new made, shipped from Manali across India.'],
+  '/shop': ['Shop thrifted outdoor gear', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Filter by brand, size and category. Delivered across India.'],
   '/sell': ['Sell your outdoor gear', 'Sell your jacket, boots, backpack, tent or bulk stock to The Mountain Thrifters. Get an offer and get paid by UPI.'],
-  '/feed': ['Instagram feed', 'The latest thrifted finds from @mountain_thrifters.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''] };
+  '/feed': ['Instagram feed', 'The latest thrifted finds from @mountain_thrifters.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''], '/done': ['Order placed', ''] };
+// Plain HTML put inside the page before the app starts, so search engines
+// read real headings, links and prices instead of a loading message.
+const fullName = (p) => (p.brand ? p.brand + ' ' : '') + p.name;
+const listHtml = (items) => items.length ? '<ul>' + items.map((p) => '<li><a href="/p/' + encodeURIComponent(p.id) + '">' + esc(fullName(p)) + '</a>' +
+  [p.size, p.condition, rupees(p.price), p.sold ? 'Sold' : ''].filter(Boolean).map((x) => ', ' + esc(x)).join('') + '</li>').join('') + '</ul>' : '<p>New pieces land every week.</p>';
+const catLinks = (cats) => '<ul>' + cats.map((c) => '<li><a href="/c/' + slug(c.name) + '">Thrifted ' + esc(c.name.toLowerCase()) + '</a>: ' +
+  (c.subs || []).map((x) => '<a href="/c/' + slug(x) + '">' + esc(x) + '</a>').join(', ') + '</li>').join('') + '</ul>';
+function findCat(cats, s) {
+  for (const c of cats) if (slug(c.name) === s) return { name: c.name, cat: c.name, sub: '', subs: c.subs || [] };
+  for (const c of cats) for (const x of c.subs || []) if (slug(x) === s) return { name: x, cat: c.name, sub: x, subs: [] };
+  return null;
+}
 async function site(request, env, ctx, url) {
+  if (url.hostname === 'www.mountainthrifters.com') return Response.redirect(SITE + url.pathname + url.search, 301);
   const path = url.pathname.replace(/\/+$/, '') || '/';
   if (path.startsWith('/img/')) {
     await init(env);
@@ -382,40 +399,88 @@ async function site(request, env, ctx, url) {
     if (!row) return new Response('Not found', { status: 404 });
     return new Response(new Uint8Array(row.bytes), { headers: { 'content-type': row.type, 'cache-control': 'public, max-age=31536000, immutable' } });
   }
-  if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /bag\nDisallow: /checkout\n\nSitemap: ' + url.origin + '/sitemap.xml\n', { headers: { 'content-type': 'text/plain' } });
+  if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /bag\nDisallow: /checkout\nDisallow: /done\n\nSitemap: ' + SITE + '/sitemap.xml\n', { headers: { 'content-type': 'text/plain' } });
   if (path === '/sitemap.xml') {
     await init(env);
-    const products = await allProducts(request, env, ctx);
-    const urls = ['/', '/shop', '/sell', '/feed'].concat(products.filter((p) => !p.sold).map((p) => '/p/' + encodeURIComponent(p.id)));
-    return new Response('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls.map((u) => '  <url><loc>' + esc(url.origin + u) + '</loc></url>').join('\n') + '\n</urlset>\n', { headers: { 'content-type': 'application/xml' } });
+    const products = (await allProducts(request, env, ctx)).filter((p) => !p.sold && !p.sample);
+    const cats = await categories(env);
+    const urls = ['/', '/shop', '/sell', '/feed'].map((u) => [u, '']);
+    for (const c of cats) { urls.push(['/c/' + slug(c.name), '']); for (const x of c.subs || []) urls.push(['/c/' + slug(x), '']); }
+    for (const p of products) urls.push(['/p/' + encodeURIComponent(p.id), p.listedAt || '']);
+    const seen = new Set();
+    return new Response('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+      urls.filter((u) => !seen.has(u[0]) && seen.add(u[0])).map((u) => '  <url><loc>' + esc(SITE + u[0]) + '</loc>' + (u[1] ? '<lastmod>' + esc(u[1].slice(0, 10)) + '</lastmod>' : '') + '</url>').join('\n') +
+      '\n</urlset>\n', { headers: { 'content-type': 'application/xml' } });
   }
-  const isProduct = path.startsWith('/p/');
-  if (!isProduct && !(path in PAGES)) return env.ASSETS.fetch(request);
-  // Every shop page is the same app shell, with the title and description
-  // written into the HTML so search engines and link previews read them.
+  const isProduct = path.startsWith('/p/'), isCat = path.startsWith('/c/');
+  if (!isProduct && !isCat && !(path in PAGES)) return env.ASSETS.fetch(request);
+  // Every shop page is the same app shell, with the title, description and a
+  // plain-HTML copy of the content written in for search engines and link previews.
   const shell = await env.ASSETS.fetch(new Request(new URL('/', url)));
-  let title = '', desc = '', extra = '<link rel="canonical" href="' + esc(url.origin + (path === '/' ? '/' : path)) + '">';
-  if (isProduct) {
+  let title = '', desc = '', body = '', status = 200, image = SITE + '/icons/icon-512.png', noindex = false, ld = [];
+  let products = [], cats = [];
+  if (isProduct || isCat || path === '/' || path === '/shop') {
     await init(env);
+    products = await allProducts(request, env, ctx);
+    products = products.filter((p) => !p.sold).concat(products.filter((p) => p.sold));
+    cats = await categories(env);
+  }
+  if (isProduct) {
     const id = decodeURIComponent(path.slice(3));
-    const p = (await allProducts(request, env, ctx)).find((x) => x.id === id);
+    const p = products.find((x) => x.id === id);
     if (p) {
-      const img = p.photo ? (p.photo.startsWith('/') ? url.origin + p.photo : p.photo) : '';
-      const full = (p.brand ? p.brand + ' ' : '') + p.name;
-      title = full + (p.size ? ', ' + p.size : '');
-      desc = ['Thrifted ' + full, p.size || '', p.condition ? p.condition.toLowerCase() : '', 'Rs ' + Number(p.price).toLocaleString('en-IN'), 'One of one, delivered across India.'].filter(Boolean).join(', ');
-      extra += '<meta property="og:type" content="product"><meta property="og:title" content="' + esc(title) + '"><meta property="og:description" content="' + esc(desc) + '">' +
-        (img ? '<meta property="og:image" content="' + esc(img) + '">' : '') +
-        '<script type="application/ld+json">' + JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: full, image: img || undefined, description: desc,
-          brand: { '@type': 'Brand', name: p.brand || 'The Mountain Thrifters' }, itemCondition: 'https://schema.org/UsedCondition',
-          offers: { '@type': 'Offer', url: url.origin + path, priceCurrency: 'INR', price: Number(p.price), availability: 'https://schema.org/' + (p.sold ? 'SoldOut' : 'InStock') } }).replace(/</g, '\\u003c') + '</script>';
+      const img = p.photo ? (p.photo.startsWith('/') ? SITE + p.photo : p.photo) : '';
+      const full = fullName(p);
+      title = 'Thrifted ' + full + (p.size ? ', ' + p.size : '');
+      desc = ['Thrifted ' + full, p.size || '', p.condition ? p.condition.toLowerCase() : '', rupees(p.price), 'One of one, shipped from Manali across India.'].filter(Boolean).join(', ');
+      if (img) image = img;
+      noindex = !!p.sample;
+      const facts = [['Brand', p.brand], ['Size', p.size], ['Condition', p.condition], ['Category', [p.category, p.sub].filter(Boolean).join(' / ')], ['For', p.gender]].filter((r) => r[1]);
+      body = '<p><a href="/shop">Shop</a>' + (p.category ? ' / <a href="/c/' + slug(p.category) + '">' + esc(p.category) + '</a>' : '') + (p.sub ? ' / <a href="/c/' + slug(p.sub) + '">' + esc(p.sub) + '</a>' : '') + '</p>' +
+        '<h1>' + esc(full) + '</h1><p>' + rupees(p.price) + (p.sold ? ' (sold)' : '') + '</p>' + (img ? '<img src="' + esc(p.photo) + '" alt="' + esc(full) + '" width="600">' : '') +
+        '<ul>' + facts.map((r) => '<li>' + r[0] + ': ' + esc(r[1]) + '</li>').join('') + '</ul>' + (p.description ? '<p>' + esc(p.description) + '</p>' : '') +
+        '<p>One of one. Thrifted, checked by hand and shipped from Manali across India.</p>';
+      ld.push({ '@context': 'https://schema.org', '@type': 'Product', name: full, image: img || undefined, description: desc, sku: p.id, category: [p.category, p.sub].filter(Boolean).join(' > ') || undefined,
+        brand: { '@type': 'Brand', name: p.brand || 'The Mountain Thrifters' }, itemCondition: 'https://schema.org/UsedCondition',
+        offers: { '@type': 'Offer', url: SITE + path, priceCurrency: 'INR', price: Number(p.price), itemCondition: 'https://schema.org/UsedCondition',
+          availability: 'https://schema.org/' + (p.sold ? 'SoldOut' : 'InStock'), seller: { '@type': 'Organization', name: 'The Mountain Thrifters' } } });
+      const crumbs = [['Shop', '/shop']].concat(p.category ? [[p.category, '/c/' + slug(p.category)]] : []).concat(p.sub ? [[p.sub, '/c/' + slug(p.sub)]] : []).concat([[full, path]]);
+      ld.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c[0], item: SITE + c[1] })) });
+    } else { status = 404; noindex = true; title = 'This piece is gone'; body = '<h1>This piece is gone</h1><p><a href="/shop">See what is still here.</a></p>'; }
+  } else if (isCat) {
+    const c = findCat(cats, path.slice(3));
+    if (c) {
+      const items = products.filter((p) => p.category === c.cat && (!c.sub || p.sub === c.sub));
+      const low = c.name.toLowerCase();
+      title = 'Thrifted ' + low + ' in India';
+      desc = 'Shop thrifted ' + low + (c.subs.length ? ': ' + c.subs.join(', ').toLowerCase() : '') + '. One-of-one pieces from the brands you know, checked by hand and shipped from Manali across India.';
+      body = '<p><a href="/shop">Shop</a>' + (c.sub ? ' / <a href="/c/' + slug(c.cat) + '">' + esc(c.cat) + '</a>' : '') + '</p><h1>Thrifted ' + esc(low) + '</h1><p>' + esc(desc) + '</p>' + listHtml(items) +
+        (c.subs.length ? '<ul>' + c.subs.map((x) => '<li><a href="/c/' + slug(x) + '">' + esc(x) + '</a></li>').join('') + '</ul>' : '');
+    } else { status = 404; noindex = true; title = 'Page not found'; body = '<h1>Page not found</h1><p><a href="/shop">Shop all gear.</a></p>'; }
+  } else {
+    title = PAGES[path][0]; desc = PAGES[path][1];
+    if (path === '/') {
+      body = '<h1>Thrifted outdoor gear from Manali, delivered across India</h1><p>' + esc(desc) + '</p><h2>Shop by category</h2>' + catLinks(cats) + '<h2>New in the gear room</h2>' + listHtml(products.slice(0, 12)) +
+        '<p><a href="/shop">Shop all gear</a> · <a href="/sell">Sell your gear</a> · <a href="/feed">Instagram</a></p>';
+      ld.push({ '@context': 'https://schema.org', '@type': 'Organization', name: 'The Mountain Thrifters', url: SITE, logo: SITE + '/icons/icon-512.png',
+        description: desc, sameAs: ['https://www.instagram.com/mountain_thrifters/'], address: { '@type': 'PostalAddress', addressLocality: 'Manali', addressRegion: 'Himachal Pradesh', addressCountry: 'IN' },
+        contactPoint: { '@type': 'ContactPoint', telephone: '+' + whatsapp(env), contactType: 'customer service', areaServed: 'IN' } });
+      ld.push({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'The Mountain Thrifters', url: SITE });
     }
-  } else if (PAGES[path]) { title = PAGES[path][0]; desc = PAGES[path][1]; }
-  if (path === '/bag' || path === '/checkout') extra += '<meta name="robots" content="noindex">';
-  let rw = new HTMLRewriter().on('head', { element(e) { e.append(extra, { html: true }); } });
-  if (title) rw = rw.on('title', { element(e) { e.setInnerContent(title + ' · The Mountain Thrifters'); } });
+    if (path === '/shop') body = '<h1>Shop thrifted outdoor gear</h1><p>' + esc(desc) + '</p>' + catLinks(cats) + listHtml(products);
+  }
+  if (['/bag', '/checkout', '/done'].includes(path) || url.hostname !== 'mountainthrifters.com') noindex = true;
+  const pageTitle = path === '/' ? 'The Mountain Thrifters · ' + title : title + ' · The Mountain Thrifters';
+  const extra = '<link rel="canonical" href="' + esc(SITE + (path === '/' ? '/' : path)) + '">' + (noindex ? '<meta name="robots" content="noindex">' : '') +
+    '<meta property="og:type" content="' + (isProduct ? 'product' : 'website') + '"><meta property="og:url" content="' + esc(SITE + path) + '"><meta property="og:title" content="' + esc(title) + '">' +
+    (desc ? '<meta property="og:description" content="' + esc(desc) + '">' : '') + '<meta property="og:image" content="' + esc(image) + '"><meta property="og:locale" content="en_IN">' +
+    '<meta name="twitter:card" content="' + (isProduct && image.indexOf('/icons/') < 0 ? 'summary_large_image' : 'summary') + '">' +
+    ld.map((o) => '<script type="application/ld+json">' + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>').join('');
+  let rw = new HTMLRewriter().on('head', { element(e) { e.append(extra, { html: true }); } })
+    .on('title', { element(e) { e.setInnerContent(pageTitle); } });
   if (desc) rw = rw.on('meta[name="description"]', { element(e) { e.setAttribute('content', desc); } });
-  return rw.transform(new Response(shell.body, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } }));
+  if (body) rw = rw.on('main#app', { element(e) { e.setInnerContent('<div class="wrap page">' + body + '</div>', { html: true }); } });
+  return rw.transform(new Response(shell.body, { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } }));
 }
 
 export default {
