@@ -6,6 +6,7 @@
 //   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID      order alerts on Telegram
 //   RESEND_API_KEY, NOTIFY_EMAIL, EMAIL_FROM  order alerts by email
 //   IG_ACCESS_TOKEN             Instagram feed and post-to-product
+//   FB_APP_ID, FB_APP_SECRET    only when the token comes from Facebook login
 //   WHATSAPP_NUMBER             optional, replaces the number below
 
 // Orders are sent to this WhatsApp number (country code first, digits only).
@@ -55,13 +56,44 @@ async function igToken(env) {
   const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'ig_token'").first();
   return (row && row.value) || env.IG_ACCESS_TOKEN || '';
 }
+// Works with both kinds of Instagram token:
+//  - "Instagram login" tokens (start with IG): used as they are.
+//  - "Facebook login" tokens: swapped once for a lasting Page token (needs
+//    FB_APP_ID and FB_APP_SECRET), and the linked Instagram account is looked up.
+const FB = 'https://graph.facebook.com/v21.0';
+async function igAuth(env) {
+  const raw = (env.IG_ACCESS_TOKEN || '').trim();
+  if (!raw) return { error: 'not connected: add IG_ACCESS_TOKEN first' };
+  if (raw.startsWith('IG')) return { token: await igToken(env), base: 'https://graph.instagram.com', id: 'me' };
+  const src = raw.slice(-16);
+  try { const c = JSON.parse(await setting(env, 'ig_auth')); if (c && c.src === src && c.token && c.id) return c; } catch (e) { /* look it up again */ }
+  let token = raw, lasting = false;
+  if (env.FB_APP_ID && env.FB_APP_SECRET) {
+    const x = await (await fetch(FB + '/oauth/access_token?grant_type=fb_exchange_token&client_id=' + encodeURIComponent(env.FB_APP_ID) +
+      '&client_secret=' + encodeURIComponent(env.FB_APP_SECRET) + '&fb_exchange_token=' + encodeURIComponent(raw))).json();
+    if (x.access_token) { token = x.access_token; lasting = true; }
+    else return { error: 'Facebook did not accept the token: ' + ((x.error && x.error.message) || 'unknown reason') };
+  }
+  const pages = await (await fetch(FB + '/me/accounts?fields=name,access_token,instagram_business_account&limit=50&access_token=' + encodeURIComponent(token))).json();
+  let found = (pages.data || []).find((pg) => pg.instagram_business_account);
+  let auth = found ? { token: found.access_token, id: found.instagram_business_account.id } : null;
+  if (!auth) {
+    const me = await (await fetch(FB + '/me?fields=instagram_business_account&access_token=' + encodeURIComponent(token))).json();
+    if (me.instagram_business_account) auth = { token, id: me.instagram_business_account.id };
+  }
+  if (!auth) return { error: (pages.error && pages.error.message) || 'No Instagram account is linked to a Facebook Page on this login.' };
+  auth = { ...auth, base: FB, src };
+  if (lasting) await saveSetting(env, 'ig_auth', JSON.stringify(auth));
+  return auth;
+}
 async function igPage(env, ctx, after) {
-  const token = await igToken(env);
-  if (!token) return { posts: [], next: '' };
+  const auth = await igAuth(env);
+  if (auth.error) return { posts: [], next: '', error: auth.error };
+  const token = auth.token;
   const cacheKey = new Request('https://cache.local/ig?after=' + encodeURIComponent(after || ''));
   const hit = await caches.default.match(cacheKey);
   if (hit) return hit.json();
-  const u = new URL('https://graph.instagram.com/me/media');
+  const u = new URL(auth.base + '/' + auth.id + '/media');
   u.searchParams.set('fields', 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp');
   u.searchParams.set('limit', '30');
   if (after) u.searchParams.set('after', after);
@@ -209,19 +241,20 @@ async function addProduct(request, env, body) {
 }
 // Publishes the first photo to Instagram with a caption linking back to the piece.
 async function igPublish(request, env, product) {
-  const token = await igToken(env);
-  if (!token) return 'not connected: add IG_ACCESS_TOKEN first';
+  const auth = await igAuth(env);
+  if (auth.error) return auth.error;
+  const token = auth.token;
   const origin = new URL(request.url).origin;
   const caption = (product.brand ? product.brand + ' ' : '') + product.name + '\n' + [product.size ? 'Size ' + product.size : '', product.condition, 'Rs ' + product.price.toLocaleString('en-IN')].filter(Boolean).join(' · ') +
     '\n\nOne of one. Shop it at ' + origin.replace(/^https?:\/\//, '') + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
   try {
-    const make = new URL('https://graph.instagram.com/me/media');
+    const make = new URL(auth.base + '/' + auth.id + '/media');
     make.searchParams.set('image_url', origin + product.photo);
     make.searchParams.set('caption', caption);
     make.searchParams.set('access_token', token);
     const a = await (await fetch(make, { method: 'POST' })).json();
     if (!a.id) return 'failed: ' + ((a.error && a.error.message) || 'Instagram did not accept the photo');
-    const pub = new URL('https://graph.instagram.com/me/media_publish');
+    const pub = new URL(auth.base + '/' + auth.id + '/media_publish');
     pub.searchParams.set('creation_id', a.id);
     pub.searchParams.set('access_token', token);
     const b = await (await fetch(pub, { method: 'POST' })).json();
@@ -264,6 +297,12 @@ async function admin(request, env, path, ctx) {
   }
   if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx, true), hideSamples: (await setting(env, 'hide_samples')) === '1' });
   if (path === '/api/admin/stats' && request.method === 'GET') return stats(request, env, ctx);
+  if (path === '/api/admin/ig-check' && request.method === 'GET') {
+    const auth = await igAuth(env);
+    if (auth.error) return json({ ok: false, message: auth.error });
+    const r = await (await fetch(auth.base + '/' + auth.id + '?fields=username&access_token=' + encodeURIComponent(auth.token))).json();
+    return json(r.username ? { ok: true, message: 'Connected as @' + r.username } : { ok: false, message: (r.error && r.error.message) || 'Instagram did not answer.' });
+  }
   if (request.method !== 'POST') return json({ error: 'not_found' }, 404);
   const body = await request.json().catch(() => ({}));
   if (path === '/api/admin/product') return addProduct(request, env, body);
@@ -397,7 +436,7 @@ export default {
   async scheduled(event, env, ctx) {
     await init(env);
     const token = await igToken(env);
-    if (!token) return;
+    if (!token || !token.startsWith('IG')) return; // Facebook-login Page tokens do not expire
     const res = await fetch('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=' + encodeURIComponent(token));
     if (!res.ok) return;
     const body = await res.json();
