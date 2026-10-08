@@ -299,6 +299,10 @@ async function admin(request, env, path, ctx) {
   }
   if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx, true), hideSamples: (await setting(env, 'hide_samples')) === '1' });
   if (path === '/api/admin/stats' && request.method === 'GET') return stats(request, env, ctx);
+  if (path === '/api/admin/plan' && request.method === 'GET') {
+    let plan = {}; try { plan = JSON.parse(await setting(env, 'plan')) || {}; } catch (e) { plan = {}; }
+    return json({ state: plan.state || {}, custom: plan.custom || [] });
+  }
   if (path === '/api/admin/ig-check' && request.method === 'GET') {
     const auth = await igAuth(env);
     if (auth.error) return json({ ok: false, message: auth.error });
@@ -315,6 +319,23 @@ async function admin(request, env, path, ctx) {
     p.cost = n === '' ? null : parseInt(n, 10);
     await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), String(body.id)).run();
     return json({ ok: true });
+  }
+  // The marketing plan: which tasks are ticked, who owns them, and any tasks the owners added.
+  // Each change is merged into the saved copy, so two phones do not overwrite each other.
+  if (path === '/api/admin/plan') {
+    let plan = {}; try { plan = JSON.parse(await setting(env, 'plan')) || {}; } catch (e) { plan = {}; }
+    plan.state = plan.state || {}; plan.custom = plan.custom || [];
+    if (body.set && body.set.id) {
+      const id = clean(body.set.id, 40), cur = plan.state[id] || {};
+      if ('done' in body.set) cur.done = body.set.done ? clean(body.set.done, 12) : '';
+      if ('who' in body.set) cur.who = clean(body.set.who, 12);
+      if ('note' in body.set) cur.note = clean(body.set.note, 300);
+      plan.state[id] = cur;
+    }
+    if (body.add && body.add.title && plan.custom.length < 200) plan.custom.push({ id: 'c' + Date.now().toString(36), phase: clean(body.add.phase, 20), title: clean(body.add.title, 140) });
+    if (body.remove) { plan.custom = plan.custom.filter((t) => t.id !== String(body.remove)); delete plan.state[String(body.remove)]; }
+    await saveSetting(env, 'plan', JSON.stringify(plan));
+    return json({ ok: true, state: plan.state, custom: plan.custom });
   }
   if (path === '/api/admin/samples') { await saveSetting(env, 'hide_samples', body.hide ? '1' : '0'); return json({ ok: true }); }
   if (path === '/api/admin/categories') {
