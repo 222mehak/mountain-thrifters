@@ -6,6 +6,32 @@
 //   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID      order alerts on Telegram
 //   RESEND_API_KEY, NOTIFY_EMAIL, EMAIL_FROM  order alerts by email
 //   IG_ACCESS_TOKEN             Instagram feed and post-to-product
+//   WHATSAPP_NUMBER             optional, replaces the number below
+
+// Orders are sent to this WhatsApp number (country code first, digits only).
+const WHATSAPP = '919317568898';
+const whatsapp = (env) => String(env.WHATSAPP_NUMBER || WHATSAPP).replace(/\D/g, '');
+
+// The categories the shop starts with. The owner can change them in the app.
+const DEFAULT_CATEGORIES = [
+  { name: 'Clothing', subs: ['Jackets and shells', 'Puffers and down', 'Fleece and mid-layers', 'Base layers', 'Snow and trek pants', 'Rainwear'] },
+  { name: 'Footwear', subs: ['Trek boots', 'Snow boots', 'Socks and gaiters'] },
+  { name: 'Accessories', subs: ['Gloves', 'Beanies and caps', 'Goggles and sunglasses', 'Neck warmers'] },
+  { name: 'Packs and bags', subs: ['Backpacks', 'Daypacks', 'Duffels', 'Rain covers'] },
+  { name: 'Camping', subs: ['Tents', 'Sleeping bags', 'Mats', 'Stoves and cookware'] },
+  { name: 'Trek essentials', subs: ['Trekking poles', 'Headlamps', 'Bottles and flasks', 'Microspikes'] },
+];
+async function setting(env, key) {
+  const row = await env.DB.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first();
+  return row ? row.value : '';
+}
+async function saveSetting(env, key, value) {
+  await env.DB.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(key, value).run();
+}
+async function categories(env) {
+  try { const v = JSON.parse(await setting(env, 'categories')); if (Array.isArray(v) && v.length) return v; } catch (e) { /* use the defaults */ }
+  return DEFAULT_CATEGORIES;
+}
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
@@ -65,27 +91,35 @@ function productFromPost(p) {
   const price = parseInt(get('price').replace(/[^\d]/g, ''), 10);
   if (!price) return null;
   const first = p.caption.split('\n').map((s) => s.trim()).filter(Boolean)[0] || 'Thrifted piece';
-  return { id: 'ig' + p.id, name: first.slice(0, 80), type: 'jacket', vibe: get('vibe'), size: get('size').toUpperCase().slice(0, 8),
-    condition: get('condition'), price, photo: p.image, link: p.link, colors: [], sold: /sold/i.test(get('status')) };
+  return { id: 'ig' + p.id, name: first.slice(0, 80), brand: get('brand').slice(0, 40), category: get('category').slice(0, 40), sub: get('type').slice(0, 40),
+    gender: get('for').slice(0, 12), size: get('size').slice(0, 20), condition: get('condition'), price, photo: p.image, link: p.link, colors: [], sold: /sold/i.test(get('status')) };
 }
 
 // ---------- Products ----------
-async function allProducts(request, env, ctx) {
+// priv = true keeps what the owner paid for each piece. Shoppers never get that.
+async function allProducts(request, env, ctx, priv) {
   let list = [];
-  try {
-    const res = await env.ASSETS.fetch(new Request(new URL('/products.json', request.url)));
-    if (res.ok) list = await res.json();
-  } catch (e) { list = []; }
+  // The sample pieces stay until the owner hides them from the app.
+  if ((await setting(env, 'hide_samples')) !== '1') {
+    try {
+      const res = await env.ASSETS.fetch(new Request(new URL('/products.json', request.url)));
+      if (res.ok) list = (await res.json()).map((p) => ({ ...p, sample: true }));
+    } catch (e) { list = []; }
+  }
   // Stock added from the admin page, newest first.
-  const own = await env.DB.prepare('SELECT data FROM products ORDER BY at DESC').all();
-  list = (own.results || []).map((r) => JSON.parse(r.data)).concat(list);
+  const own = await env.DB.prepare('SELECT data, at FROM products ORDER BY at DESC').all();
+  list = (own.results || []).map((r) => ({ ...JSON.parse(r.data), listedAt: r.at })).concat(list);
   try {
     const ig = await igPage(env, ctx, '');
     for (const p of ig.posts) { const prod = productFromPost(p); if (prod) list.push(prod); }
   } catch (e) { /* the shop still works without Instagram */ }
   const sold = await env.DB.prepare('SELECT product_id FROM sold').all();
   const gone = new Set((sold.results || []).map((r) => r.product_id));
-  return list.map((p) => ({ ...p, id: String(p.id), sold: !!p.sold || gone.has(String(p.id)) }));
+  return list.map((p) => {
+    const out = { ...p, id: String(p.id), sold: !!p.sold || gone.has(String(p.id)) };
+    if (!priv) delete out.cost;
+    return out;
+  });
 }
 
 // ---------- Alerts ----------
@@ -121,13 +155,14 @@ async function placeOrder(request, env, ctx) {
   const city = clean(body.city, 60), address = clean(body.address, 300);
   if (!ids.length) return json({ error: 'empty', message: 'Your bag is empty.' }, 400);
   if (!name || phone.length !== 10 || pincode.length !== 6 || !address) return json({ error: 'details', message: 'Check your name, 10-digit mobile, 6-digit pincode and address.' }, 400);
-  const products = await allProducts(request, env, ctx);
+  const products = await allProducts(request, env, ctx, true);
   const items = [];
   for (const id of ids) {
     const p = products.find((x) => x.id === id);
     if (!p) return json({ error: 'unknown', message: 'One of these pieces is no longer listed.' }, 409);
     if (p.sold) return json({ error: 'sold', message: p.name + ' has just sold.', productId: id }, 409);
-    items.push({ id: p.id, name: p.name, size: p.size || '', price: Number(p.price) || 0 });
+    items.push({ id: p.id, name: (p.brand ? p.brand + ' ' : '') + p.name, size: p.size || '', price: Number(p.price) || 0,
+      brand: p.brand || '', category: p.category || '', cost: p.cost == null ? null : Number(p.cost), listedAt: p.listedAt || '' });
   }
   const total = items.reduce((s, i) => s + i.price, 0);
   const id = 'MT' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 1296).toString(36).toUpperCase().padStart(2, '0');
@@ -139,7 +174,7 @@ async function placeOrder(request, env, ctx) {
   try { await env.DB.batch(stmts); }
   catch (e) { return json({ error: 'sold', message: 'Someone bought one of these a moment ago. Your bag has been updated.' }, 409); }
   ctx.waitUntil(notify(env, order));
-  return json({ orderId: id, total, upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters' });
+  return json({ orderId: id, total, items: items.map((i) => ({ name: i.name, size: i.size, price: i.price })), upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
 }
 
 // ---------- Admin ----------
@@ -163,8 +198,9 @@ async function addProduct(request, env, body) {
     stmts.push(env.DB.prepare('INSERT INTO images (id, product_id, type, bytes) VALUES (?, ?, ?, ?)').bind(imgId, id, m[1], bytes));
     photos.push('/img/' + imgId);
   }
-  const product = { id, name, type: clean(body.type, 20) || 'jacket', vibe: clean(body.vibe, 40), size: clean(body.size, 8).toUpperCase(),
-    condition: clean(body.condition, 20), price, description: clean(body.description, 600), photo: photos[0], photos, colors: [], sold: false };
+  const product = { id, name, brand: clean(body.brand, 40), category: clean(body.category, 40), sub: clean(body.sub, 40), gender: clean(body.gender, 12),
+    cost: String(body.cost == null ? '' : body.cost).replace(/[^\d]/g, '') === '' ? null : parseInt(String(body.cost).replace(/[^\d]/g, ''), 10),
+    size: clean(body.size, 20), condition: clean(body.condition, 20), price, description: clean(body.description, 600), photo: photos[0], photos, colors: [], sold: false };
   stmts.push(env.DB.prepare('INSERT INTO products (id, data, at) VALUES (?, ?, ?)').bind(id, JSON.stringify(product), new Date().toISOString()));
   await env.DB.batch(stmts);
   let instagram = 'not requested';
@@ -176,7 +212,7 @@ async function igPublish(request, env, product) {
   const token = await igToken(env);
   if (!token) return 'not connected: add IG_ACCESS_TOKEN first';
   const origin = new URL(request.url).origin;
-  const caption = product.name + '\n' + [product.size ? 'Size ' + product.size : '', product.condition, 'Rs ' + product.price.toLocaleString('en-IN')].filter(Boolean).join(' · ') +
+  const caption = (product.brand ? product.brand + ' ' : '') + product.name + '\n' + [product.size ? 'Size ' + product.size : '', product.condition, 'Rs ' + product.price.toLocaleString('en-IN')].filter(Boolean).join(' · ') +
     '\n\nOne of one. Shop it at ' + origin.replace(/^https?:\/\//, '') + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
   try {
     const make = new URL('https://graph.instagram.com/me/media');
@@ -193,16 +229,78 @@ async function igPublish(request, env, product) {
   } catch (e) { return 'failed: could not reach Instagram'; }
 }
 
+// Everything the Numbers tab needs: each sale, what is waiting, and what is unsold.
+async function stats(request, env, ctx) {
+  const products = await allProducts(request, env, ctx, true);
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const rows = await env.DB.prepare('SELECT status, total, data, at FROM orders ORDER BY at').all();
+  const sales = [], pending = { count: 0, total: 0 }; let cancelled = 0;
+  for (const r of rows.results || []) {
+    if (r.status === 'cancelled') { cancelled++; continue; }
+    if (r.status === 'awaiting payment') { pending.count++; pending.total += r.total || 0; continue; }
+    for (const i of JSON.parse(r.data).items || []) {
+      const p = byId.get(String(i.id)) || {};
+      if (p.sample) continue;
+      sales.push({ name: i.name, brand: i.brand || p.brand || '', category: i.category || p.category || '', price: Number(i.price) || 0,
+        cost: i.cost != null ? i.cost : (p.cost != null ? p.cost : null), listedAt: i.listedAt || p.listedAt || '', soldAt: r.at });
+    }
+  }
+  // Pieces marked as sold by hand, for example sold over Instagram.
+  const manual = await env.DB.prepare("SELECT product_id, at FROM sold WHERE order_id = 'manual'").all();
+  for (const m of manual.results || []) {
+    const p = byId.get(String(m.product_id));
+    if (p && !p.sample) sales.push({ name: (p.brand ? p.brand + ' ' : '') + p.name, brand: p.brand || '', category: p.category || '', price: Number(p.price) || 0,
+      cost: p.cost != null ? p.cost : null, listedAt: p.listedAt || '', soldAt: m.at, manual: true });
+  }
+  const stock = products.filter((p) => !p.sold && !p.sample).map((p) => ({ price: Number(p.price) || 0, cost: p.cost != null ? p.cost : null, listedAt: p.listedAt || '', category: p.category || '' }));
+  return json({ sales, pending, cancelled, stock });
+}
+
 async function admin(request, env, path, ctx) {
   if (!isAdmin(request, env)) return json({ error: 'forbidden', message: 'Wrong admin key.' }, 403);
   if (path === '/api/admin/orders' && request.method === 'GET') {
     const rows = await env.DB.prepare('SELECT id, status, total, data, at FROM orders ORDER BY at DESC LIMIT 200').all();
     return json({ orders: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), status: r.status, at: r.at })) });
   }
-  if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx) });
+  if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx, true), hideSamples: (await setting(env, 'hide_samples')) === '1' });
+  if (path === '/api/admin/stats' && request.method === 'GET') return stats(request, env, ctx);
   if (request.method !== 'POST') return json({ error: 'not_found' }, 404);
   const body = await request.json().catch(() => ({}));
   if (path === '/api/admin/product') return addProduct(request, env, body);
+  if (path === '/api/admin/product-cost') {
+    const row = await env.DB.prepare('SELECT data FROM products WHERE id = ?').bind(String(body.id)).first();
+    if (!row) return json({ error: 'details', message: 'Only pieces added from this app can have a cost.' }, 400);
+    const p = JSON.parse(row.data), n = String(body.cost == null ? '' : body.cost).replace(/[^\d]/g, '');
+    p.cost = n === '' ? null : parseInt(n, 10);
+    await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), String(body.id)).run();
+    return json({ ok: true });
+  }
+  if (path === '/api/admin/samples') { await saveSetting(env, 'hide_samples', body.hide ? '1' : '0'); return json({ ok: true }); }
+  if (path === '/api/admin/categories') {
+    const tree = (Array.isArray(body.categories) ? body.categories : []).slice(0, 30).map((c) => ({
+      name: clean(c && c.name, 40), subs: [...new Set((Array.isArray(c && c.subs) ? c.subs : []).map((x) => clean(x, 40)).filter(Boolean))].slice(0, 40),
+    })).filter((c) => c.name);
+    if (!tree.length) return json({ error: 'details', message: 'Keep at least one category.' }, 400);
+    // A rename also moves the pieces already filed under the old name.
+    const renames = (Array.isArray(body.renames) ? body.renames : []).slice(0, 20);
+    if (renames.length) {
+      const rows = await env.DB.prepare('SELECT id, data FROM products').all();
+      const stmts = [];
+      for (const r of rows.results || []) {
+        const p = JSON.parse(r.data); let changed = false;
+        for (const n of renames) {
+          const from = clean(n.from, 40), to = clean(n.to, 40);
+          if (!from || !to) continue;
+          if (n.kind === 'group' && p.category === from) { p.category = to; changed = true; }
+          if (n.kind === 'sub' && p.category === clean(n.group, 40) && p.sub === from) { p.sub = to; changed = true; }
+        }
+        if (changed) stmts.push(env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), r.id));
+      }
+      if (stmts.length) await env.DB.batch(stmts);
+    }
+    await saveSetting(env, 'categories', JSON.stringify(tree));
+    return json({ ok: true, categories: tree });
+  }
   if (path === '/api/admin/product-delete') {
     if (!body.id) return json({ error: 'bad_request' }, 400);
     await env.DB.batch([
@@ -232,8 +330,8 @@ async function admin(request, env, path, ctx) {
 
 // ---------- Pages, photos and search-engine files ----------
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const PAGES = { '/': null, '/shop': ['Shop thrifted ski and snow wear', 'Browse one-of-one thrifted ski jackets, snow pants, puffers and fleece. Delivered across India.'],
-  '/sell': ['Sell your snow gear', 'Sell your ski jacket, snow pants or bulk stock to The Mountain Thrifters. Get an offer and get paid by UPI.'],
+const PAGES = { '/': null, '/shop': ['Shop thrifted outdoor gear', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Filter by brand, size and category. Delivered across India.'],
+  '/sell': ['Sell your outdoor gear', 'Sell your jacket, boots, backpack, tent or bulk stock to The Mountain Thrifters. Get an offer and get paid by UPI.'],
   '/feed': ['Instagram feed', 'The latest thrifted finds from @mountain_thrifters.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''] };
 async function site(request, env, ctx, url) {
   const path = url.pathname.replace(/\/+$/, '') || '/';
@@ -262,12 +360,13 @@ async function site(request, env, ctx, url) {
     const p = (await allProducts(request, env, ctx)).find((x) => x.id === id);
     if (p) {
       const img = p.photo ? (p.photo.startsWith('/') ? url.origin + p.photo : p.photo) : '';
-      title = p.name + (p.size ? ', size ' + p.size : '');
-      desc = ['Thrifted ' + p.name, p.size ? 'size ' + p.size : '', p.condition ? p.condition.toLowerCase() : '', 'Rs ' + Number(p.price).toLocaleString('en-IN'), 'One of one, delivered across India.'].filter(Boolean).join(', ');
+      const full = (p.brand ? p.brand + ' ' : '') + p.name;
+      title = full + (p.size ? ', ' + p.size : '');
+      desc = ['Thrifted ' + full, p.size || '', p.condition ? p.condition.toLowerCase() : '', 'Rs ' + Number(p.price).toLocaleString('en-IN'), 'One of one, delivered across India.'].filter(Boolean).join(', ');
       extra += '<meta property="og:type" content="product"><meta property="og:title" content="' + esc(title) + '"><meta property="og:description" content="' + esc(desc) + '">' +
         (img ? '<meta property="og:image" content="' + esc(img) + '">' : '') +
-        '<script type="application/ld+json">' + JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: p.name, image: img || undefined, description: desc,
-          brand: { '@type': 'Brand', name: 'The Mountain Thrifters' }, itemCondition: 'https://schema.org/UsedCondition',
+        '<script type="application/ld+json">' + JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: full, image: img || undefined, description: desc,
+          brand: { '@type': 'Brand', name: p.brand || 'The Mountain Thrifters' }, itemCondition: 'https://schema.org/UsedCondition',
           offers: { '@type': 'Offer', url: url.origin + path, priceCurrency: 'INR', price: Number(p.price), availability: 'https://schema.org/' + (p.sold ? 'SoldOut' : 'InStock') } }).replace(/</g, '\\u003c') + '</script>';
     }
   } else if (PAGES[path]) { title = PAGES[path][0]; desc = PAGES[path][1]; }
@@ -285,6 +384,7 @@ export default {
       if (!url.pathname.startsWith('/api/')) return await site(request, env, ctx, url);
       await init(env);
       if (url.pathname === '/api/products') return json(await allProducts(request, env, ctx));
+      if (url.pathname === '/api/config') return json({ categories: await categories(env), whatsapp: whatsapp(env) });
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);
       if (url.pathname.startsWith('/api/admin/')) return admin(request, env, url.pathname, ctx);
