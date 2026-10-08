@@ -127,6 +127,7 @@ nav button.on{color:var(--pop)}
 <div class="stp"><b>5</b> Finish</div>
 <label for="a-desc" style="margin-top:0">Description (optional)</label><textarea id="a-desc" placeholder="Fit, flaws, anything worth knowing"></textarea>
 <label class="tog" for="a-ig"><span>Also post to Instagram</span><input id="a-ig" type="checkbox"></label>
+<p class="dim" id="igstate" style="margin:6px 0 0"></p>
 <button class="btn" id="a-go" type="button">Put it live</button>
 <p class="msg" id="a-msg" role="status"></p>
 </section>
@@ -180,7 +181,7 @@ function show(tab){
 function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();});}
 $('signin').onclick=function(){
   KEY=$('key').value.trim();
-  api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('add');loadBrands();}).catch(function(e){$('loginmsg').textContent=e.message;});
+  api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('add');loadBrands();igState();}).catch(function(e){$('loginmsg').textContent=e.message;});
 };
 $('tabs').onclick=function(e){var b=e.target.closest('button');if(b)show(b.getAttribute('data-t'));};
 
@@ -204,6 +205,7 @@ function fillSubs(){
   chipRow('c-size',SIZES[$('a-cat').value]||['One size'],$('a-size').value);
 }
 function drawBrands(){chipRow('c-brand',brands.slice(0,10),$('a-brand').value);}
+function igState(){api('ig-check').then(function(r){var el=$('igstate');el.textContent='Instagram: '+r.message;el.className='dim '+(r.ok?'good':'');}).catch(function(){});}
 function loadBrands(){return api('products').then(function(d){brands=[];d.products.forEach(function(p){if(p.brand&&brands.indexOf(p.brand)<0)brands.push(p.brand);});drawBrands();}).catch(function(){});}
 function pick(boxId,fn){$(boxId).onclick=function(e){var b=e.target.closest('button');if(!b)return;fn(b.textContent);};}
 pick('c-cat',function(v){$('a-cat').value=v;mem('cat',v);$('a-size').value='';fillCats();});
@@ -402,7 +404,7 @@ function drawStats(){
 
 drawShots();
 loadConfig().catch(function(){});
-if(KEY)api('orders').then(function(){show('add');loadBrands();}).catch(function(){show('');});else show('');
+if(KEY)api('orders').then(function(){show('add');loadBrands();igState();}).catch(function(){show('');});else show('');
 })();
 </script>
 </body>
