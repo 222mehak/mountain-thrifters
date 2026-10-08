@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "name": "SAMPLE: Colour-block ski jacket",
+    "type": "jacket",
+    "vibe": "Retro ski",
+    "size": "M",
+    "condition": "Barely worn",
+    "price": 2400,
+    "photo": "",
+    "colors": [
+      "#0C2714",
+      "#C8FF2E"
+    ],
+    "sold": false
+  },
+  {
+    "id": 2,
+    "name": "SAMPLE: Baggy snow cargos",
+    "type": "pants",
+    "vibe": "Gorpcore",
+    "size": "L",
+    "condition": "Worn in",
+    "price": 1500,
+    "photo": "",
+    "colors": [
+      "#1F5BD8",
+      "#F5F0DF"
+    ],
+    "sold": false
+  },
+  {
+    "id": 3,
+    "name": "SAMPLE: Oversized puffer",
+    "type": "puffer",
+    "vibe": "Puffers",
+    "size": "S",
+    "condition": "Barely worn",
+    "price": 2800,
+    "photo": "",
+    "colors": [
+      "#C8FF2E",
+      "#0C2714"
+    ],
+    "sold": false
+  },
+  {
+    "id": 4,
+    "name": "SAMPLE: Half-zip trek fleece",
+    "type": "fleece",
+    "vibe": "Trek and fleece",
+    "size": "M",
+    "condition": "Well loved",
+    "price": 900,
+    "photo": "",
+    "colors": [
+      "#7FA58B",
+      "#0C2714"
+    ],
+    "sold": false
+  },
+  {
+    "id": 5,
+    "name": "SAMPLE: Racing-stripe ski jacket",
+    "type": "jacket",
+    "vibe": "Retro ski",
+    "size": "L",
+    "condition": "Worn in",
+    "price": 2100,
+    "photo": "",
+    "colors": [
+      "#D8483A",
+      "#F5F0DF"
+    ],
+    "sold": false
+  },
+  {
+    "id": 6,
+    "name": "SAMPLE: Shell rain jacket",
+    "type": "jacket",
+    "vibe": "Gorpcore",
+    "size": "M",
+    "condition": "Barely worn",
+    "price": 1900,
+    "photo": "",
+    "colors": [
+      "#2F6B46",
+      "#F2C94C"
+    ],
+    "sold": false
+  }
+]

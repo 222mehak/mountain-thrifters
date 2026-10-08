@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Thrifted ski, snow and trek wear from Manali. One of each, nothing new made, delivered across India.">
+<title>The Mountain Thrifters</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Mali:wght@500;700&display=swap">
+<style>
+/* Layout: one column of roomy rounded panels on cream; forest-green blocks carry the brand moments; phone gets a bottom tab bar. */
+:root{
+  --bg:#F5F0DF; --surface:#FBF8EC; --panel:#EAE3CB; --ink:#0E140F; --muted:#45524A; --line:#DDD6BE;
+  --btn:#0C2714; --on-btn:#F5F0DF; --block:#0C2714; --block-2:#17402A; --on-block:#F5F0DF; --on-block-muted:#C9D3C4;
+  --pop:#C8FF2E; --on-pop:#0C2714; --shadow:#04140A; --glass:rgba(245,240,223,.86);
+  --easy:#1E8E4A; --mid:#1F5BD8; --hard:#0C2714;
+  --sans:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --hand:'Mali','Comic Sans MS',cursive;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A1F11; --surface:#12301C; --panel:#17402A; --ink:#F5F0DF; --muted:#B8C6B7; --line:#2A5238;
+  --btn:#F5F0DF; --on-btn:#0C2714; --block:#17402A; --block-2:#1F5235; --on-block:#F5F0DF; --on-block-muted:#C9D3C4;
+  --pop:#C8FF2E; --on-pop:#0C2714; --shadow:#04140A; --glass:rgba(10,31,17,.86);
+  --easy:#4CC27A; --mid:#6E9BFF; --hard:#F5F0DF; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A1F11; --surface:#12301C; --panel:#17402A; --ink:#F5F0DF; --muted:#B8C6B7; --line:#2A5238;
+  --btn:#F5F0DF; --on-btn:#0C2714; --block:#17402A; --block-2:#1F5235; --on-block:#F5F0DF; --on-block-muted:#C9D3C4;
+  --pop:#C8FF2E; --on-pop:#0C2714; --shadow:#04140A; --glass:rgba(10,31,17,.86);
+  --easy:#4CC27A; --mid:#6E9BFF; --hard:#F5F0DF; color-scheme:dark}
+*{box-sizing:border-box}
+html{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+.photo{width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;margin:10px 0 12px}
+.stage .photo{width:min(420px,100%);margin:0;border-radius:18px}
+.item .photo{width:64px;flex:none;margin:0;border-radius:10px}
+.ig .photo{margin:0;border-radius:0;height:100%}
+pre.note{white-space:pre-wrap;font-family:inherit;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.5;padding-bottom:76px}
+a{color:inherit}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.03em;line-height:1.05;text-wrap:balance}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--pop);outline-offset:2px;box-shadow:0 0 0 5px var(--btn)}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:20px}
+.hand{font-family:var(--hand);font-weight:500}
+.muted{color:var(--muted)}
+.demo{background:var(--block);color:var(--pop);text-align:center;font-family:var(--hand);font-size:14px;padding:8px 16px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--glass);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:8px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;font-size:17px;line-height:1.02;letter-spacing:-.02em}
+nav.top{display:none;gap:28px;font-size:15px}
+nav.top a{text-decoration:none;padding:12px 0}
+nav.top a[aria-current]{font-weight:600;box-shadow:0 2px 0 var(--ink)}
+.bagbtn{display:flex;align-items:center;gap:8px;text-decoration:none;font-weight:600;font-size:15px;padding:11px 16px;border-radius:999px;background:var(--btn);color:var(--on-btn)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;background:var(--glass);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px 8px;text-decoration:none;font-size:12px;font-weight:500;color:var(--muted)}
+.tabs a[aria-current]{color:var(--ink);font-weight:700}
+@media (min-width:760px){nav.top{display:flex}.tabs{display:none}body{padding-bottom:0}}
+main{animation:rise .5s cubic-bezier(.2,.7,.2,1)}
+@keyframes rise{from{opacity:.4;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes swing{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+section{padding-block:36px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;cursor:pointer;text-decoration:none;font-weight:600;padding:15px 28px;border-radius:999px;background:var(--btn);color:var(--on-btn);transition:transform .25s cubic-bezier(.2,.7,.2,1)}
+.btn:hover{transform:scale(1.03)}
+.btn.pop{background:var(--pop);color:var(--on-pop)}
+.btn.line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn.wide{width:100%}
+.hero{display:flex;flex-wrap:wrap;gap:32px;align-items:center;padding-block:40px}
+.hero>div{flex:1 1 340px;min-width:0}
+.hero h1{font-size:clamp(44px,8vw,84px);letter-spacing:-.035em}
+.mark{background:var(--pop);color:var(--on-pop);padding:0 .12em;border-radius:.1em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.logoblock{background:var(--block);border-radius:32px;padding:0 20px 28px;display:flex;flex-direction:column;align-items:center;overflow:hidden}
+.logoblock .string{width:3px;height:36px;background:var(--on-block)}
+.logoblock svg{width:min(400px,100%);height:auto;transform-origin:50% 0;animation:swing 5s ease-in-out infinite}
+.row{display:flex;flex-wrap:wrap;gap:16px}
+.head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;margin-bottom:20px}
+.head h2{font-size:clamp(30px,5vw,44px)}
+.vibe{flex:1 1 150px;min-height:120px;border-radius:24px;padding:20px;background:var(--panel);text-decoration:none;display:flex;flex-direction:column;justify-content:space-between;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.vibe:hover,.card:hover{transform:translateY(-5px)}
+.vibe b{font-size:22px;letter-spacing:-.02em}
+.vibe.dark{background:var(--block);color:var(--on-block)}
+.vibe.pop{background:var(--pop);color:var(--on-pop)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:14px}
+@media (min-width:760px){.grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px}}
+.card{background:var(--surface);border-radius:24px;padding:16px;text-decoration:none;display:flex;flex-direction:column;min-width:0;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.card .top{display:flex;justify-content:space-between;gap:6px;font-size:13px;color:var(--muted)}
+.card svg.art{width:100%;height:auto;max-height:180px;margin:10px 0 12px}
+.card b{font-size:17px;line-height:1.2}
+.price{font-weight:600;font-variant-numeric:tabular-nums}
+.cond{display:inline-flex;align-items:center;gap:6px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.chip{flex:none;border:0;cursor:pointer;padding:11px 18px;border-radius:999px;background:var(--panel);font-weight:500;font-size:15px}
+.chip[aria-pressed="true"]{background:var(--btn);color:var(--on-btn)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;margin-block:14px 20px}
+select,input[type=text],input[type=tel],textarea{width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:13px 14px}
+.tools select{width:auto;flex:1 1 150px}
+label{display:flex;flex-direction:column;gap:6px;font-weight:500;font-size:15px}
+.block{background:var(--block);color:var(--on-block);border-radius:32px;padding:clamp(28px,6vw,56px)}
+.block h2{font-size:clamp(32px,6vw,58px)}
+.block .muted{color:var(--on-block-muted)}
+.popblock{background:var(--pop);color:var(--on-pop);border-radius:32px;padding:clamp(24px,5vw,44px);display:flex;flex-wrap:wrap;gap:20px;align-items:center}
+.popblock>*{flex:1 1 280px;min-width:0}
+.popblock input{background:#FFFFFF;color:#0C2714;border-color:#0C2714}
+.popblock .btn{background:#0C2714;color:#F5F0DF}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:18px;margin-top:28px}
+.facts div{border-top:1px solid var(--block-2);padding-top:12px}
+.facts b{display:block;font-size:40px;letter-spacing:-.03em;color:var(--pop);line-height:1.1}
+.ig{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:760px){.ig{grid-template-columns:repeat(6,1fr);gap:12px}}
+.ig a{aspect-ratio:1;max-width:100%;border-radius:18px;background:var(--panel);display:flex;align-items:center;justify-content:center;text-decoration:none;overflow:hidden}
+.ig a:nth-child(3n+1){background:var(--block)}
+.ig svg{width:62%;height:auto}
+.door{flex:1 1 280px;min-width:0;background:var(--panel);border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.door h3{font-size:26px}
+.pdp{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;padding-block:20px 36px}
+.pdp>div{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.stage{position:relative;background:var(--panel);border-radius:28px;padding:28px;display:flex;justify-content:center}
+.stage svg{width:min(300px,80%);height:auto}
+.tag{position:absolute;left:16px;top:16px;background:var(--block);color:var(--on-block);font-family:var(--hand);font-weight:700;font-size:14px;padding:6px 13px;border-radius:999px}
+.box{background:var(--surface);border-radius:20px;padding:18px 20px}
+.kv{display:flex;justify-content:space-between;gap:14px;padding:13px 0;border-top:1px solid var(--line);font-size:16px}
+.kv span:last-child{color:var(--muted);text-align:right}
+.item{display:flex;gap:14px;align-items:center;background:var(--surface);border-radius:20px;padding:12px 14px}
+.item svg{width:64px;height:auto;flex:none}
+.item>div:nth-child(2){flex:1;min-width:0}
+.x{border:0;background:transparent;cursor:pointer;text-decoration:underline;padding:12px 4px;color:var(--muted)}
+form.stack,.stack{display:flex;flex-direction:column;gap:14px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.narrow{max-width:640px}
+.pay{display:flex;flex-wrap:wrap;gap:8px}
+.pay label{flex:1 1 120px;flex-direction:row;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;cursor:pointer}
+.note{background:var(--panel);border-radius:16px;padding:12px 16px;font-size:15px}
+.err{color:#B3261E;font-weight:600;font-size:15px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .err{color:#FFB4AB}}
+:root[data-theme="dark"] .err{color:#FFB4AB}
+footer{padding-block:36px;font-size:15px;color:var(--muted);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header><div class="wrap bar">
+  <a class="brand" href="#home" id="brandLink"></a>
+  <nav class="top" aria-label="Main" id="topNav"></nav>
+  <a class="bagbtn" href="#bag" id="bagBtn"></a>
+</div></header>
+<main class="wrap" id="view"></main>
+<div class="wrap"><footer><div>The Mountain Thrifters · Thrifted in Manali, delivered across India</div><div id="footIg"></div></footer></div>
+<nav class="tabs" aria-label="Sections" id="tabs"></nav>
+
+<script>
+// ---- Settings to fill in before launch ----
+var IG_HANDLE = 'mountain_thrifters';   // your Instagram handle, without the @
+var VIBES = ['Retro ski','Gorpcore','Puffers','Trek and fleece'];
+var CONDS = [['Barely worn','easy'],['Worn in','mid'],['Well loved','hard']];
+var P = [];   // filled from products.json
+
+var bag = [];
+try { bag = JSON.parse(localStorage.getItem('mt-bag') || '[]'); } catch (e) { bag = []; }
+function saveBag(){ try { localStorage.setItem('mt-bag', JSON.stringify(bag)); } catch (e) {} }
+var filt = {vibe:-1,size:'',sort:'new'}, sellMode = 'one', done = null;
+
+function rs(n){ return '₹' + n.toLocaleString('en-IN'); }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function dot(k,s){ s=s||14; var c='var(--'+k+')';
+  var sh = k==='easy' ? '<circle cx="9" cy="9" r="8" fill="'+c+'"/>' : k==='mid' ? '<rect x="1" y="1" width="16" height="16" fill="'+c+'"/>' : '<path d="M9 0 18 9 9 18 0 9Z" fill="'+c+'"/>';
+  return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 18 18" aria-hidden="true">'+sh+'</svg>'; }
+function cond(i){ return '<span class="cond">'+dot(CONDS[i][1])+CONDS[i][0]+'</span>'; }
+var BODY='M60 30 85 20Q100 32 115 20L140 30 185 80 165 105 148 85V200H52V85L35 105 15 80Z';
+function art(p,cls){ var a=p.c1,b=p.c2,g='';
+  if(p.photo) return '<img class="photo" src="'+esc(p.photo)+'" alt="'+esc(p.name)+'" loading="lazy">';
+  if(p.type==='jacket') g='<path d="'+BODY+'" fill="'+a+'"/><path d="M52 96H148V118H52Z" fill="'+b+'"/><path d="M100 28V200" stroke="'+b+'" stroke-width="2.5"/>';
+  else if(p.type==='puffer') g='<path d="'+BODY+'" fill="'+a+'"/><path d="M52 70H148M52 105H148M52 140H148M52 172H148M100 28V200" stroke="'+b+'" stroke-width="2.5" fill="none"/>';
+  else if(p.type==='fleece') g='<path d="'+BODY+'" fill="'+a+'"/><path d="M85 20Q100 32 115 20L112 44H88Z" fill="'+b+'"/><path d="M100 30V100" stroke="'+b+'" stroke-width="2.5"/>';
+  else g='<path d="M58 18H142L154 204H108L100 84 92 204H46Z" fill="'+a+'"/><rect x="58" y="18" width="84" height="16" fill="'+b+'"/>';
+  return '<svg class="'+(cls||'art')+'" viewBox="0 0 200 220" role="img" aria-label="Illustration of '+esc(p.name)+'">'+g+'</svg>'; }
+var HOOK='M200 76V58C200 44 222 47 222 28 222 13 211 4 198 4 186 4 176 13 176 25', TRI='M200 76 34 300Q20 326 50 326H350Q380 326 366 300Z';
+function icon(s,line,body){ return '<svg width="'+s+'" height="'+Math.round(s*.92)+'" viewBox="8 -8 384 352" aria-hidden="true"><path d="'+HOOK+'" fill="none" stroke="'+line+'" stroke-width="22" stroke-linecap="round"/><path d="'+TRI+'" fill="'+body+'" stroke="'+line+'" stroke-width="22" stroke-linejoin="round"/><path d="M200 84 150 152 178 164 200 140 222 164 250 152Z" fill="#C8FF2E"/></svg>'; }
+function logo(){ return '<svg viewBox="0 0 400 340" role="img" aria-label="The Mountain Thrifters logo: a snow-capped peak that is also a clothes hanger, with signs reading The Mountain and Thrifters">'
+ +'<path d="'+HOOK+'" fill="none" stroke="#F5F0DF" stroke-width="9" stroke-linecap="round"/><path d="'+TRI+'" fill="#1D5235" stroke="#F5F0DF" stroke-width="9" stroke-linejoin="round"/><path d="M200 76 163 126 182 136 200 116 218 136 237 126Z" fill="#C8FF2E"/>'
+ +'<path d="M92 157H319L350 181.5 319 206H92Z" fill="#04140A"/><path d="M86 150H313L344 174.5 313 199H86Z" fill="#F5F0DF"/><text x="104" y="184" font-family="Instrument Sans,sans-serif" font-weight="700" font-size="27" letter-spacing="-.5" fill="#0C2714">THE MOUNTAIN</text>'
+ +'<path d="M76 213H338V279H76L40 246Z" fill="#04140A"/><path d="M70 206H332V272H70L34 239Z" fill="#C8FF2E"/><text x="88" y="254" font-family="Instrument Sans,sans-serif" font-weight="700" font-size="42" letter-spacing="-.8" fill="#0C2714">THRIFTERS</text>'
+ +'<rect x="112" y="291" width="188" height="26" rx="6" fill="#04140A"/><rect x="108" y="286" width="188" height="26" rx="6" fill="#F5F0DF"/><circle cx="124" cy="299" r="5.5" fill="#1E8E4A"/><rect x="133" y="293.5" width="11" height="11" fill="#1F5BD8"/><path d="M154 293 160 299 154 305 148 299Z" fill="#0C2714"/><text x="166" y="303" font-family="Instrument Sans,sans-serif" font-weight="600" font-size="10.5" letter-spacing="1" fill="#0C2714">EASY ON THE PLANET</text></svg>'; }
+
+function card(p){ var inBag = bag.indexOf(p.id) > -1;
+  return '<a class="card" href="#p-'+p.id+'"><div class="top hand"><span>'+CONDS[p.cond][0].toLowerCase()+'</span><span>'+(p.sold?'sold':inBag?'in your bag':'1 of 1')+'</span></div>'+art(p)+'<b>'+esc(p.name)+'</b><span class="muted" style="font-size:15px">Size '+p.size+'</span><span class="price" style="margin-top:8px">'+rs(p.price)+'</span></a>'; }
+function igLink(){ return IG_HANDLE ? 'https://www.instagram.com/'+encodeURIComponent(IG_HANDLE)+'/' : ''; }
+
+var V = {};
+V.home = function(){
+  var ig = igLink(), tiles = '';
+  P.slice(0,6).forEach(function(p){ tiles += '<a '+(ig?'href="'+ig+'" target="_blank" rel="noopener"':'href="#home"')+' aria-label="Instagram post placeholder">'+art(p,'')+'</a>'; });
+  return '<section class="hero"><div class="stack" style="gap:18px"><div class="hand" style="color:var(--muted)">thrifted in the himalaya, worn everywhere</div>'
+  +'<h1>Mountain fits that <span class="mark">already exist.</span></h1><p class="muted" style="font-size:19px;max-width:30em">Thrifted ski, snow and trek wear. One of each, nothing new made, delivered anywhere in India.</p>'
+  +'<div class="row" style="align-items:center"><a class="btn" href="#shop">Shop the drop</a><a href="#sell" style="font-weight:600;padding:12px 4px">Sell with us</a></div></div>'
+  +'<div class="logoblock"><div class="string"></div>'+logo()+'</div></section>'
+  +'<section><div class="head"><h2>Shop by vibe.</h2></div><div class="row">'
+  +VIBES.map(function(v,i){ var notes=['colour-block, loud','shells, cargos, tech','big, warm, cropped','half-zips, layers']; return '<a class="vibe '+(i===1?'dark':i===2?'pop':'')+'" href="#shop" data-vibe="'+i+'"><span class="hand" style="font-size:14px">'+notes[i]+'</span><b>'+v+'</b></a>'; }).join('')+'</div></section>'
+  +'<section><div class="head"><h2>Live now.</h2><a href="#shop" style="font-weight:600;padding:12px 0">See everything</a></div><div class="grid">'+P.slice(0,4).map(card).join('')+'</div></section>'
+  +'<section><div class="popblock"><div><div class="hand">new pieces land every week</div><h2 style="font-size:clamp(28px,5vw,40px);margin-top:4px">New drops land on Instagram first.</h2></div>'
+  +'<div><a class="btn" href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Follow for drop alerts</a></div></div></section>'
+  +'<section><div class="block"><div class="hand muted">why thrift</div><h2 style="margin-top:6px;max-width:16em">The most sustainable jacket is the one that <span style="color:var(--pop)">already exists.</span></h2>'
+  +'<p class="muted" style="margin-top:14px;max-width:34em">Every piece here was made once and is being worn again. No new fabric, no new factory run, no overstock.</p>'
+  +'<div class="facts"><div><b>0</b><span class="muted">new garments made</span></div><div><b>1 of 1</b><span class="muted">every piece is the only one</span></div><div><b>100%</b><span class="muted">thrifted stock</span></div></div></div></section>'
+  +'<section><div class="head"><h2>Fresh off our Instagram.</h2>'+(ig?'<a href="'+ig+'" target="_blank" rel="noopener" style="font-weight:600;padding:12px 0">Follow @'+esc(IG_HANDLE)+'</a>':'<span class="hand muted">your handle goes here</span>')+'</div>'
+  +'<div class="ig">'+tiles+'</div><p class="muted" style="margin-top:12px;font-size:15px">'+(ig?'Tap any tile to open our Instagram.':'These tiles are stand-ins. Once your Instagram account is connected, your latest posts fill this row automatically.')+'</p></section>'
+  +'<section><div class="head"><h2>Sell with us.</h2></div><div class="row"><div class="door"><span class="hand muted">for you</span><h3>Got a jacket you’re done with?</h3><p class="muted">Send a photo, get an offer, get paid by UPI once it’s checked.</p><a class="btn" href="#sell" data-sell="one">Get an offer</a></div>'
+  +'<div class="door"><span class="hand muted">for suppliers</span><h3>Got a hundred?</h3><p class="muted">Rental shops, thrift sellers and bulk lots. Reach buyers across India.</p><a class="btn line" href="#sell" data-sell="bulk">Partner with us</a></div></div></section>';
+};
+V.shop = function(){
+  var list = P.filter(function(p){ return (filt.vibe<0||p.vibe===filt.vibe) && (!filt.size||p.size===filt.size); });
+  if(filt.sort==='low') list.sort(function(a,b){return a.price-b.price;}); if(filt.sort==='high') list.sort(function(a,b){return b.price-a.price;});
+  var chips = '<button class="chip" type="button" data-chip="-1" aria-pressed="'+(filt.vibe<0)+'">All</button>'+VIBES.map(function(v,i){return '<button class="chip" type="button" data-chip="'+i+'" aria-pressed="'+(filt.vibe===i)+'">'+v+'</button>';}).join('');
+  return '<section><div class="head"><h2>Shop.</h2><span class="muted">'+list.length+' of '+P.length+' pieces</span></div><div class="chips">'+chips+'</div>'
+  +'<div class="tools"><select id="fSize" aria-label="Size"><option value="">All sizes</option>'+['S','M','L'].map(function(s){return '<option'+(filt.size===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
+  +'<select id="fSort" aria-label="Sort"><option value="new"'+(filt.sort==='new'?' selected':'')+'>Newest first</option><option value="low"'+(filt.sort==='low'?' selected':'')+'>Price: low to high</option><option value="high"'+(filt.sort==='high'?' selected':'')+'>Price: high to low</option></select></div>'
+  +(list.length?'<div class="grid">'+list.map(card).join('')+'</div>':'<div class="note">Nothing matches those filters. <button class="x" type="button" data-chip="-1" id="clearF">Show everything</button></div>')+'</section>';
+};
+V.product = function(id){
+  var p = P.filter(function(x){return x.id===id;})[0]; if(!p) return V.shop();
+  var inBag = bag.indexOf(p.id) > -1;
+  return '<p class="muted" style="font-size:15px;padding-top:16px"><a href="#shop" style="padding:12px 0;display:inline-block">Shop</a> / '+VIBES[p.vibe]+'</p><div class="pdp"><div><div class="stage"><span class="tag">'+(p.sold?'sold':'1 of 1')+'</span>'+art(p,'')+'</div></div>'
+  +'<div><div class="hand muted">thrifted in the himalaya ~ nothing new made</div><h1 style="font-size:clamp(34px,6vw,50px)">'+esc(p.name)+'</h1><div class="price" style="font-size:26px">'+rs(p.price)+'</div>'
+  +'<div class="box"><div style="display:flex;justify-content:space-between;gap:12px;font-weight:600"><span>Condition</span>'+cond(p.cond)+'</div><div class="row muted" style="gap:14px;font-size:13px;margin-top:10px">'+[0,1,2].map(cond).join('')+'</div></div>'
+  +'<div class="box" style="display:flex;justify-content:space-between;font-weight:600"><span>Size</span><span>'+p.size+'</span></div>'
+  +(p.sold?'<div class="note">This one has sold. Every piece is one of one.</div>':'<button class="btn wide '+(inBag?'pop':'')+'" type="button" id="addBtn" data-id="'+p.id+'">'+(inBag?'In your bag. Tap to remove':'Add to bag')+'</button><button class="btn line wide" type="button" id="buyBtn" data-id="'+p.id+'">Buy now</button>')
+  +'<div><div class="kv"><span>Washed and checked</span><span>Zips, seams, waterproofing</span></div><div class="kv"><span>Payment</span><span>UPI, confirmed in our Instagram chat</span></div><div class="kv"><span>Delivery</span><span>Anywhere in India</span></div></div></div></div>';
+};
+function total(){ return bag.reduce(function(s,id){ var p=P.filter(function(x){return x.id===id;})[0]; return s+(p?p.price:0); },0); }
+function lines(rm){ return bag.map(function(id){ var p=P.filter(function(x){return x.id===id;})[0]; return '<div class="item">'+art(p,'')+'<div><b>'+esc(p.name)+'</b><div class="muted" style="font-size:15px">Size '+p.size+' · '+CONDS[p.cond][0]+'</div></div><div style="text-align:right"><div class="price">'+rs(p.price)+'</div>'+(rm?'<button class="x" type="button" data-rm="'+id+'">Remove</button>':'')+'</div></div>'; }).join(''); }
+V.bag = function(){
+  if(!bag.length) return '<section class="narrow stack"><h2 style="font-size:40px">Your bag is empty.</h2><p class="muted">Every piece is one of one, so grab it when you see it.</p><div><a class="btn" href="#shop">Browse the shop</a></div></section>';
+  return '<section class="narrow stack"><h2 style="font-size:40px">Your bag.</h2>'+lines(true)+'<div class="kv" style="font-weight:600"><span>Subtotal</span><span class="price" style="color:var(--ink)">'+rs(total())+'</span></div><a class="btn wide" href="#checkout">Order on Instagram</a><a href="#shop" style="text-align:center;padding:12px">Keep shopping</a></section>';
+};
+V.checkout = function(){
+  if(!bag.length) return V.bag();
+  var msg = 'Hi! I would like to order:\n' + bag.map(function(id){ var p=P.filter(function(x){return x.id===id;})[0]; return '- '+p.name+' (Size '+p.size+') '+rs(p.price); }).join('\n') + '\nTotal: '+rs(total())+'\nMy pincode: ';
+  return '<section class="narrow stack"><h2 style="font-size:40px">Order on Instagram.</h2>'+lines(false)
+  +'<div class="kv" style="font-weight:600"><span>Total</span><span class="price" style="color:var(--ink)">'+rs(total())+'</span></div>'
+  +'<p class="muted">Send us this message. We confirm the piece is still available, then share a UPI payment request in the chat.</p>'
+  +'<pre class="note" id="orderMsg">'+esc(msg)+'</pre>'
+  +'<a class="btn wide" id="igOrder" href="https://ig.me/m/mountain_thrifters" target="_blank" rel="noopener">Copy message and open Instagram</a><div id="copyMsg" role="status" class="muted" style="text-align:center;font-size:15px"></div></section>';
+};
+V.sell = function(){
+  return '<section class="narrow stack"><h2 style="font-size:40px">Sell with us.</h2><p class="muted">Your gear keeps going, you get paid. From one jacket to a whole storeroom.</p>'
+  +'<div class="box"><b>1. Message us photos</b><p class="muted">Front, back, label and any flaws. Add the size and brand.</p></div>'
+  +'<div class="box"><b>2. Get an offer</b><p class="muted">We reply in the chat with a price.</p></div>'
+  +'<div class="box"><b>3. Send it, get paid</b><p class="muted">Once we have checked the piece, we pay you by UPI.</p></div>'
+  +'<div class="box"><b>Suppliers</b><p class="muted">Rental shops, thrift sellers and bulk lots: tell us roughly how many pieces you have and where you are.</p></div>'
+  +'<a class="btn wide" href="https://ig.me/m/mountain_thrifters" target="_blank" rel="noopener">Message us on Instagram</a></section>';
+};
+
+function route(){ var h=(location.hash||'#home').slice(1); if(h.indexOf('p-')===0) return ['product',parseInt(h.slice(2),10)]; return [V[h]?h:'home']; }
+function chrome(cur){
+  document.getElementById('brandLink').innerHTML = icon(44,'var(--ink)','var(--block-2)')+'<span>THE MOUNTAIN<br>THRIFTERS</span>';
+  var items=[['home','Home'],['shop','Shop'],['sell','Sell'],['bag','Bag']], sec = cur==='product'?'shop':cur==='checkout'?'bag':cur;
+  document.getElementById('topNav').innerHTML = items.slice(0,3).map(function(i){return '<a href="#'+i[0]+'"'+(sec===i[0]?' aria-current="page"':'')+'>'+i[1]+'</a>';}).join('');
+  document.getElementById('bagBtn').innerHTML = 'Bag <span style="font-variant-numeric:tabular-nums">('+bag.length+')</span>';
+  document.getElementById('tabs').innerHTML = items.map(function(i){return '<a href="#'+i[0]+'"'+(sec===i[0]?' aria-current="page"':'')+'><b style="font-size:17px;line-height:1">'+(i[0]==='bag'?bag.length:{home:'⌂',shop:'▦',sell:'⇄'}[i[0]])+'</b>'+i[1]+'</a>';}).join('');
+  document.getElementById('footIg').textContent = IG_HANDLE ? '@'+IG_HANDLE : 'Instagram handle to be added';
+}
+function render(keep){ var r=route(), el=document.getElementById('view'); el.innerHTML = V[r[0]](r[1]); chrome(r[0]);
+  if(!keep){ el.style.animation='none'; void el.offsetWidth; el.style.animation=''; window.scrollTo(0,0); } }
+function toggle(id){ var i=bag.indexOf(id); if(i>-1) bag.splice(i,1); else bag.push(id); saveBag(); }
+function digits(s){ return (s||'').replace(/\D/g,''); }
+
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-vibe],[data-chip],[data-rm],[data-mode],[data-sell],#addBtn,#buyBtn,#igOrder'); if(!t) return;
+  if(t.dataset.vibe!==undefined){ filt.vibe=+t.dataset.vibe; return; }
+  if(t.dataset.sell){ sellMode=t.dataset.sell; return; }
+  if(t.dataset.chip!==undefined){ filt.vibe=+t.dataset.chip; if(t.id==='clearF') filt.size=''; render(true); return; }
+  if(t.dataset.mode){ sellMode=t.dataset.mode; render(true); return; }
+  if(t.dataset.rm){ toggle(+t.dataset.rm); render(true); return; }
+  if(t.id==='addBtn'){ toggle(+t.dataset.id); render(true); return; }
+  if(t.id==='igOrder'){ var tx=document.getElementById('orderMsg').textContent, cm=document.getElementById('copyMsg'); if(navigator.clipboard){ navigator.clipboard.writeText(tx).then(function(){cm.textContent='Message copied. Paste it in the chat.';},function(){cm.textContent='Copy the message above and paste it in the chat.';}); } else { cm.textContent='Copy the message above and paste it in the chat.'; } return; }
+  if(t.id==='buyBtn'){ var id=+t.dataset.id; if(bag.indexOf(id)<0) toggle(id); location.hash='#checkout'; }
+});
+document.addEventListener('change',function(e){
+  if(e.target.id==='fSize'){ filt.size=e.target.value; render(true); }
+  if(e.target.id==='fSort'){ filt.sort=e.target.value; render(true); }
+});
+document.addEventListener('submit',function(e){
+  e.preventDefault(); var f=e.target, v=function(id){ var x=document.getElementById(id); return x?x.value.trim():''; };
+  if(f.id==='alertForm'){ document.getElementById('alertMsg').textContent = digits(v('alertPhone')).length===10 ? 'Looks good. Alerts switch on when the shop goes live.' : 'Enter a 10-digit mobile number.'; }
+  if(f.id==='coForm'){ var err = !v('coName')?'Add your name.':digits(v('coPhone')).length!==10?'Enter a 10-digit mobile number.':digits(v('coPin')).length!==6?'Enter a 6-digit pincode.':!v('coAddr')?'Add your address.':'';
+    if(err){ document.getElementById('coErr').textContent=err; return; } done={name:v('coName').split(' ')[0]}; bag=[]; saveBag(); render(); }
+  if(f.id==='sellForm'){ var er = !v('slName')?'Add a name.':digits(v('slPhone')).length!==10?'Enter a 10-digit WhatsApp number.':'';
+    if(er){ document.getElementById('slErr').textContent=er; return; } done={}; render(); }
+});
+window.addEventListener('hashchange',function(){ render(); });
+function norm(x){ var cn=CONDS.map(function(c){return c[0].toLowerCase();}), ci=cn.indexOf(String(x.condition||'').toLowerCase()), vi=VIBES.map(function(v){return v.toLowerCase();}).indexOf(String(x.vibe||'').toLowerCase()), col=x.colors||[];
+  return {id:x.id,name:x.name||'Untitled piece',type:x.type||'jacket',vibe:vi<0?0:vi,size:x.size||'',cond:ci<0?1:ci,price:+x.price||0,c1:col[0]||'#0C2714',c2:col[1]||'#C8FF2E',photo:x.photo||'',sold:!!x.sold}; }
+fetch('products.json',{cache:'no-store'}).then(function(r){ return r.json(); }).then(function(list){
+  P = list.map(norm);
+  bag = bag.filter(function(id){ return P.some(function(p){ return p.id===id && !p.sold; }); }); saveBag();
+  render(true);
+}).catch(function(){
+  chrome('home');
+  document.getElementById('view').innerHTML = '<section><div class="note">The product list could not be loaded. Check that products.json sits next to index.html and is valid.</div></section>';
+});
+</script>
+</body>
+</html>
