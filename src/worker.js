@@ -374,7 +374,7 @@ const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const SITE = 'https://mountainthrifters.com';
 const slug = (v) => String(v).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const rupees = (n) => 'Rs ' + Number(n || 0).toLocaleString('en-IN');
-const PAGES = { '/': ['Thrifted outdoor gear from Manali, delivered across India', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. One of each, nothing new made, shipped from Manali across India.'],
+const PAGES = { '/': ['Thrifted outdoor gear from Manali, delivered across India', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Thrifted and new, at fair prices, shipped from Manali across India.'],
   '/shop': ['Shop thrifted outdoor gear', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Filter by brand, size and category. Delivered across India.'],
   '/sell': ['Sell your outdoor gear', 'Sell your jacket, boots, backpack, tent or bulk stock to The Mountain Thrifters. Get an offer and get paid by UPI.'],
   '/feed': ['Instagram feed', 'The latest thrifted finds from @mountain_thrifters.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''], '/done': ['Order placed', ''] };
