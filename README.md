@@ -8,3 +8,5 @@ It runs on a Cloudflare Worker with a D1 database.
 - `src/worker.js`  the backend
 - `wrangler.jsonc` Cloudflare settings
 - `SETUP.md`       how to switch everything on, and how to run the shop day to day
+
+Deployed from this repository by Cloudflare Workers Builds.
