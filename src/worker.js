@@ -244,9 +244,11 @@ async function igPublish(request, env, product) {
   const auth = await igAuth(env);
   if (auth.error) return auth.error;
   const token = auth.token;
+  // Captions always show the shop's own address, whichever address the owner app was opened from.
   const origin = new URL(request.url).origin;
+  const shop = env.SHOP_URL || 'mountainthrifters.com';
   const caption = (product.brand ? product.brand + ' ' : '') + product.name + '\n' + [product.size ? 'Size ' + product.size : '', product.condition, 'Rs ' + product.price.toLocaleString('en-IN')].filter(Boolean).join(' · ') +
-    '\n\nOne of one. Shop it at ' + origin.replace(/^https?:\/\//, '') + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
+    '\n\nOne of one. Shop it at ' + shop + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
   try {
     const make = new URL(auth.base + '/' + auth.id + '/media');
     make.searchParams.set('image_url', origin + product.photo);
