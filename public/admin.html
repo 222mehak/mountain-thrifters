@@ -153,7 +153,8 @@ details.ph>summary::-webkit-details-marker{display:none}
 </section>
 
 <section id="t-orders" hidden><h1>Orders</h1><div id="orders" class="mute">Loading…</div></section>
-<section id="t-stock" hidden><h1>Stock</h1><div id="stock" class="mute">Loading…</div></section>
+<section id="t-stock" hidden><h1>Stock</h1>
+<div class="box"><label for="bn" style="margin-top:0">Line across the top of the shop</label><input id="bn" maxlength="140"><p class="dim" style="margin:6px 0 0">"Sign up for alerts" is added after it and opens WhatsApp. Leave it empty to hide the line.</p><div class="acts"><button class="sm pop" id="bnsave" type="button">Save</button><span class="dim" id="bnmsg" role="status" style="align-self:center"></span></div></div><div id="stock" class="mute">Loading…</div></section>
 
 <section id="t-cats" hidden>
 <h1>Categories</h1>
@@ -170,6 +171,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 
 <section id="t-plan" hidden>
 <h1>Marketing plan</h1>
+<a class="btn pop" href="/launch.html" style="text-decoration:none;margin:0 0 18px">Open the launch planner</a>
 <div id="plan" class="mute">Loading…</div>
 </section>
 
@@ -204,7 +206,8 @@ function show(tab){
   if(tab==='plan')loadPlan();
   window.scrollTo(0,0);
 }
-function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();});}
+function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();$('bn').value=c.notice||'';});}
+$('bnsave').onclick=function(){api('banner',{text:$('bn').value}).then(function(){$('bnmsg').textContent='Saved.';}).catch(function(e){$('bnmsg').textContent=e.message;});};
 $('signin').onclick=function(){
   KEY=$('key').value.trim();
   api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('add');loadBrands();igState();}).catch(function(e){$('loginmsg').textContent=e.message;});

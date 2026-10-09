@@ -47,6 +47,11 @@ header.top{border-bottom:1px solid var(--line);background:var(--bg)}
 .top nav a{text-decoration:none;padding:14px 0;white-space:nowrap}
 .top nav a:hover,.top nav a.on{color:var(--pop)}
 .notice{background:var(--s1);border-bottom:1px solid var(--line);color:var(--mute);font-size:13px;text-align:center;padding:8px 16px}
+.notice.drop{background:#0B0C0B;color:var(--ink);font-size:14px;font-weight:500;padding:10px 16px}
+.notice.drop a{color:var(--pop);text-underline-offset:4px;white-space:nowrap;display:inline-block;padding:2px 0}
+.ig a{position:relative}
+.ig .tagbuy{position:absolute;left:0;right:0;bottom:0;background:rgba(17,19,18,.86);color:var(--ink);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:9px 10px;text-align:center}
+.ig .tagbuy.sold{color:var(--dim)}
 
 .hero{position:relative;min-height:min(86vh,760px);display:flex;align-items:flex-end;overflow:hidden;background:#111312}
 .hero .img{position:absolute;inset:0;background:url(/photos/hero.jpg) 62% 78%/175% no-repeat;filter:grayscale(1) contrast(1.1)}
@@ -224,7 +229,9 @@ function load(){
     if(a[1]&&a[1].whatsapp)S.wa=a[1].whatsapp;
     S.loaded=true;
     document.getElementById('fwa').href=waLink('Hi Mountain Thrifters!');
-    document.getElementById('notice').innerHTML=S.products.some(function(p){return p.sample;})?'<div class="notice">We are stocking the shelves. The pieces shown for now are samples.</div>':'';
+    var drop=(a[1]&&a[1].notice)||'';
+    document.getElementById('notice').innerHTML=(drop?'<div class="notice drop">'+esc(drop)+' <a href="'+esc(waLink('Hi Mountain Thrifters! Please add me to the gear drop alerts.'))+'" target="_blank" rel="noopener">Sign up for alerts</a></div>':'')+
+      (S.products.some(function(p){return p.sample;})?'<div class="notice">We are stocking the shelves. The pieces shown for now are samples.</div>':'');
     bagCount();
   });
 }
@@ -272,7 +279,13 @@ function home(){
     el.innerHTML=S.ig.slice(0,6).map(igTile).join('');document.getElementById('igrow').hidden=false;
   });
 }
-function igTile(p){return '<a href="'+esc(p.link)+'" target="_blank" rel="noopener"><img src="'+esc(p.image)+'" alt="'+esc((p.caption||'Instagram post').slice(0,90))+'" loading="lazy"></a>';}
+// A post that belongs to a piece opens that piece, ready to buy. Other posts open on Instagram.
+function igTile(p){
+  var img='<img src="'+esc(p.image)+'" alt="'+esc((p.caption||'Instagram post').slice(0,90))+'" loading="lazy">';
+  var pid=p.product||'',pr=S.products.filter(function(x){return x.id===pid||x.id==='ig'+p.id;})[0];
+  if(pr)return '<a href="/p/'+encodeURIComponent(pr.id)+'" data-link>'+img+'<span class="tagbuy'+(pr.sold?' sold':'')+'">'+(pr.sold?'Sold':'Buy now · '+rs(pr.price))+'</span></a>';
+  return '<a href="'+esc(p.link)+'" target="_blank" rel="noopener">'+img+'</a>';
+}
 
 // ----- shop -----
 var KEYS=['for','cat','sub','brand','size','cond','sort'];
@@ -338,8 +351,8 @@ function product(id){
   '<dl class="facts">'+facts.map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd></div>';}).join('')+'</dl>'+
   (p.description?'<p class="mute">'+esc(p.description)+'</p>':'')+
   (p.sold?'<button class="btn wide" disabled>Sold</button><p class="dim">This one found a home. <a href="/shop" data-link>See what is still here.</a></p>'
-    :inBag?'<a class="btn wide pop" href="/bag" data-link>In your bag. View bag</a>'
-    :'<button class="btn wide" type="button" data-add="'+esc(p.id)+'">Add to bag</button>')+
+    :inBag?'<a class="btn wide pop" href="/checkout" data-link>Buy now</a><a class="btn wide ghost" style="margin-top:10px" href="/bag" data-link>In your bag. View bag</a>'
+    :'<button class="btn wide pop" type="button" data-buy="'+esc(p.id)+'">Buy now</button><button class="btn wide ghost" style="margin-top:10px" type="button" data-add="'+esc(p.id)+'">Add to bag</button>')+
   '<p class="dim" style="font-size:14px">One of one. Thrifted, checked by hand and shipped from Manali across India.'+(p.link?' <a href="'+esc(p.link)+'" target="_blank" rel="noopener">See it on Instagram.</a>':'')+'</p></div></div></div>';
 }
 
@@ -399,7 +412,7 @@ function sell(){
   '<button class="btn wa wide" style="margin-top:20px">Send on WhatsApp</button><p class="dim" style="font-size:14px">WhatsApp opens with your message written. Add your photos there and press send.</p></form></div></div>';
 }
 function feed(){
-  app.innerHTML='<div class="wrap page"><div class="shead"><div><div class="eye">@mountain_thrifters</div><h1 style="margin-top:10px">Instagram</h1></div><a class="btn ghost" href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Follow us</a></div><div id="fg" class="mute">Loading the feed…</div></div>';
+  app.innerHTML='<div class="wrap page"><div class="shead"><div><div class="eye">@mountain_thrifters</div><h1 style="margin-top:10px">Shop our Instagram</h1><p class="mute" style="margin:10px 0 0">Tap a photo to buy that piece.</p></div><a class="btn ghost" href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Follow us</a></div><div id="fg" class="mute">Loading the feed…</div></div>';
   (S.ig?Promise.resolve():loadIg('')).then(drawFeed);
 }
 function drawFeed(){
@@ -409,14 +422,19 @@ function drawFeed(){
 }
 
 // ----- routing -----
-var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Instagram feed',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
+var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
 function render(){
   var path=location.pathname.replace(/\/+$/,'')||'/',name=path.split('/')[1]||'home';
   document.body.classList.toggle('home',path==='/');
   document.querySelectorAll('[data-nav]').forEach(function(a){a.classList.toggle('on',a.getAttribute('data-nav')===name);});
   if(path==='/')home();
   else if(path==='/shop'||path.indexOf('/c/')===0)shop();
-  else if(path.indexOf('/p/')===0)product(decodeURIComponent(path.slice(3)));
+  else if(path.indexOf('/p/')===0){
+    var pid=decodeURIComponent(path.slice(3));
+    // Links ending in ?buy=1 (for Story link stickers) go straight to checkout with the piece in the bag.
+    if(/[?&]buy=1/.test(location.search)){var bp=S.products.filter(function(x){return x.id===pid;})[0];if(bp&&!bp.sold){var bb=bag();if(bb.indexOf(pid)<0)bb.push(pid);setBag(bb);go('/checkout',true);return;}}
+    product(pid);
+  }
   else if(path==='/bag')bagView();
   else if(path==='/checkout')checkout();
   else if(path==='/done')done();
@@ -432,11 +450,12 @@ function render(){
 function go(url,replace){history[replace?'replaceState':'pushState'](null,'',url);render();if(!location.hash)window.scrollTo(0,0);}
 window.addEventListener('popstate',render);
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-link],[data-f],[data-clear],[data-add],[data-remove],[data-pic],[data-igmore]');
+  var t=e.target.closest('[data-link],[data-f],[data-clear],[data-buy],[data-add],[data-remove],[data-pic],[data-igmore]');
   if(!t)return;
   if(t.hasAttribute('data-link')){if(e.metaKey||e.ctrlKey||e.shiftKey)return;e.preventDefault();go(t.getAttribute('href'));return;}
   if(t.hasAttribute('data-f')){var f=getF(),k=t.getAttribute('data-f');f[k]=t.getAttribute('data-v');if(k==='cat')f.sub='';setF(f);return;}
   if(t.hasAttribute('data-clear')){history.replaceState(null,'','/shop');shop(true);return;}
+  if(t.hasAttribute('data-buy')){var bi=bag(),bid=t.getAttribute('data-buy');if(bi.indexOf(bid)<0)bi.push(bid);setBag(bi);go('/checkout');return;}
   if(t.hasAttribute('data-add')){var ids=bag(),id=t.getAttribute('data-add');if(ids.indexOf(id)<0)ids.push(id);setBag(ids);product(id);return;}
   if(t.hasAttribute('data-remove')){setBag(bag().filter(function(x){return x!==t.getAttribute('data-remove');}));bagView();return;}
   if(t.hasAttribute('data-pic')){var p=S.products.filter(function(x){return '/p/'+encodeURIComponent(x.id)===location.pathname;})[0];if(p)document.getElementById('mainpic').innerHTML=pic(p,t.getAttribute('data-pic'));document.querySelectorAll('.thumbs button').forEach(function(b){b.classList.toggle('on',b===t);});return;}

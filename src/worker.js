@@ -29,6 +29,13 @@ async function setting(env, key) {
 async function saveSetting(env, key, value) {
   await env.DB.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(key, value).run();
 }
+// The line across the top of the shop. The owner can change it in the app; a single dash hides it.
+const DEFAULT_BANNER = 'Next Sourced Gear Drop: Sunday at 7 PM IST.';
+async function bannerText(env) {
+  const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'banner'").first();
+  const v = row ? row.value : DEFAULT_BANNER;
+  return v === '-' ? '' : v;
+}
 async function categories(env) {
   try { const v = JSON.parse(await setting(env, 'categories')); if (Array.isArray(v) && v.length) return v; } catch (e) { /* use the defaults */ }
   return DEFAULT_CATEGORIES;
@@ -104,6 +111,8 @@ async function igPage(env, ctx, after) {
   const out = {
     posts: (body.data || []).map((p) => ({
       id: p.id, caption: p.caption || '', link: p.permalink, at: p.timestamp,
+      // Posts made from the owner app carry the piece's address in the caption.
+      product: ((p.caption || '').match(/\/p\/([A-Za-z0-9_-]+)/) || [])[1] || '',
       image: p.media_type === 'VIDEO' ? (p.thumbnail_url || '') : (p.media_url || p.thumbnail_url || ''),
     })).filter((p) => p.image),
     next: (body.paging && body.paging.next && body.paging.cursors && body.paging.cursors.after) || '',
@@ -259,7 +268,7 @@ async function igPublish(request, env, product) {
   const origin = new URL(request.url).origin;
   const shop = env.SHOP_URL || 'mountainthrifters.com';
   const caption = (product.brand ? product.brand + ' ' : '') + product.name + '\n' + [product.size ? 'Size ' + product.size : '', product.condition, 'Rs ' + product.price.toLocaleString('en-IN')].filter(Boolean).join(' · ') +
-    '\n\nOne of one. Shop it at ' + shop + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
+    '\n\nTo buy: tap the link in our bio, then tap this photo.\n' + shop + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
   try {
     const make = new URL(auth.base + '/' + auth.id + '/media');
     make.searchParams.set('image_url', origin + (product.igPhoto || product.photo));
@@ -358,6 +367,7 @@ async function admin(request, env, path, ctx) {
     await saveSetting(env, 'plan', JSON.stringify(plan));
     return json({ ok: true, state: plan.state, custom: plan.custom });
   }
+  if (path === '/api/admin/banner') { await saveSetting(env, 'banner', clean(body.text, 140) || '-'); return json({ ok: true }); }
   if (path === '/api/admin/samples') { await saveSetting(env, 'hide_samples', body.hide ? '1' : '0'); return json({ ok: true }); }
   if (path === '/api/admin/categories') {
     const tree = (Array.isArray(body.categories) ? body.categories : []).slice(0, 30).map((c) => ({
@@ -419,7 +429,7 @@ const rupees = (n) => 'Rs ' + Number(n || 0).toLocaleString('en-IN');
 const PAGES = { '/': ['Thrifted outdoor gear from Manali, delivered across India', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Thrifted and new, at fair prices, shipped from Manali across India.'],
   '/shop': ['Shop thrifted outdoor gear', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Filter by brand, size and category. Delivered across India.'],
   '/sell': ['Sell your outdoor gear', 'Sell your jacket, boots, backpack, tent or bulk stock to The Mountain Thrifters. Get an offer and get paid by UPI.'],
-  '/feed': ['Instagram feed', 'The latest thrifted finds from @mountain_thrifters.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''], '/done': ['Order placed', ''] };
+  '/feed': ['Shop our Instagram', 'Tap any photo from @mountain_thrifters to buy that piece. Mountain gear, thrifted and new, shipped across India.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''], '/done': ['Order placed', ''] };
 // Plain HTML put inside the page before the app starts, so search engines
 // read real headings, links and prices instead of a loading message.
 const fullName = (p) => (p.brand ? p.brand + ' ' : '') + p.name;
@@ -532,7 +542,7 @@ export default {
       if (!url.pathname.startsWith('/api/')) return await site(request, env, ctx, url);
       await init(env);
       if (url.pathname === '/api/products') return json(await allProducts(request, env, ctx));
-      if (url.pathname === '/api/config') return json({ categories: await categories(env), whatsapp: whatsapp(env) });
+      if (url.pathname === '/api/config') return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env) });
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);
       if (url.pathname.startsWith('/api/admin/')) return admin(request, env, url.pathname, ctx);

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#111312">
+<title>Launch planner</title>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#111312;--ink:#EDEBE4;--mute:#A9ADA6;--dim:#8E938C;--pop:#E8623A;--s1:#181B19;--s2:#222623;--line:#262A27;--edge:#3A3F3B;--good:#7FD6A0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,sans-serif;font-size:16px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--pop);outline-offset:2px}
+main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
+a{color:inherit}
+h1{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:44px;line-height:1;text-transform:uppercase;margin:10px 0 6px}
+.eye{font-size:12px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--pop)}
+.mute{color:var(--mute)}.dim{color:var(--dim);font-size:14px}
+.top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:20px 0}
+.kpi{background:var(--s1);padding:14px}
+.kpi b{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:32px;line-height:1.1}
+.kpi span{font-size:12px;color:var(--dim)}
+.set{background:var(--s1);padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-size:11px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+input,select{width:100%;background:var(--bg);border:1px solid var(--edge);padding:12px;border-radius:0;font-size:16px}
+.prog{height:8px;background:var(--s2);margin:6px 0 0}.prog i{display:block;height:100%;background:var(--pop)}
+details.ph{border-top:1px solid var(--line);margin-top:8px}
+details.ph>summary{list-style:none;cursor:pointer;padding:16px 0;display:flex;justify-content:space-between;align-items:center;gap:12px}
+details.ph>summary::-webkit-details-marker{display:none}
+.pt{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:26px;text-transform:uppercase;line-height:1.05}
+.tag{font-size:12px;font-weight:600;letter-spacing:.1em;color:var(--pop);white-space:nowrap}
+.today .pt{color:var(--pop)}
+.task{background:var(--s1);margin-bottom:8px;padding:12px}
+.row{display:flex;gap:12px;align-items:flex-start}
+.chk{flex:none;width:32px;height:32px;border:1.5px solid var(--edge);background:transparent;cursor:pointer;font-size:18px;line-height:1;color:var(--bg)}
+.chk.on{background:var(--pop);border-color:var(--pop)}
+.tt{flex:1;min-width:0;padding-top:4px}
+.done .tt{color:var(--dim);text-decoration:line-through}
+.who{flex:none;min-height:32px;padding:0 10px;background:transparent;border:1px solid var(--edge);font-size:12px;cursor:pointer;color:var(--mute)}
+.cap{margin:10px 0 0 44px;background:var(--bg);border-left:2px solid var(--pop);padding:12px;white-space:pre-line;color:var(--mute);font-size:15px}
+.copy{margin:8px 0 0 44px;min-height:40px;padding:0 14px;background:transparent;border:1px solid var(--edge);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--edge);text-decoration:none;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+@media (max-width:560px){.top{grid-template-columns:1fr 1fr}.set{grid-template-columns:1fr}h1{font-size:36px}}
+</style>
+</head>
+<body>
+<main>
+<a class="btn" href="/admin.html">Back to the owner app</a>
+<div class="eye" style="margin-top:22px">The Mountain Thrifters</div>
+<h1>Launch planner</h1>
+<p class="mute" style="margin:0">One list for both of you. Tick things off as you go. Captions are written and ready to copy.</p>
+<div id="app" class="mute" style="margin-top:20px">Loading…</div>
+</main>
+<script>
+(function(){
+var PH=[{"id": "ready", "name": "Ready to launch?", "off": null, "note": "Every box here should be ticked before you announce a date.", "tasks": [["Lready_0", "15 or more real pieces listed, with photos", "Me", ""], ["Lready_1", "Sample pieces hidden (Stock tab)", "Me", ""], ["Lready_2", "Site opens on mobile data, with no DNS fix", "Both", ""], ["Lready_3", "One full test order placed and cancelled", "Both", ""], ["Lready_4", "A piece posted from the app reaches Instagram and Facebook", "Me", ""], ["Lready_5", "WhatsApp Business profile, quick replies and away message set", "Partner", ""], ["Lready_6", "Line across the top of the shop shows the right drop time", "Me", ""], ["Lready_7", "Launch offer decided (free shipping, Rs 200 off, or none)", "Both", ""], ["Lready_8", "5 to 8 best pieces held back for launch day", "Partner", ""], ["Lready_9", "Launch Reel chosen and saved to the phone", "Me", ""]]}, {"id": "d3", "name": "Three days before", "off": -3, "note": "Start the curiosity. Do not show the new look yet.", "tasks": [["Ld3_0", "Post a Story: something is changing", "Me", "Something's changing here on {DAY}. Same Mountain Thrifters. Bigger gear room. Stay close."], ["Ld3_1", "Message 10 loyal past buyers personally", "Partner", "Hey! We've built something for people like you who've bought from us. It goes live {DAY} at 7 PM. You'll get the link first."]]}, {"id": "d2", "name": "Two days before", "off": -2, "note": "Thank the people who got you here.", "tasks": [["Ld2_0", "Post a thank-you to past buyers (feed post and Story)", "Me", "Every piece we've sold so far went out through DMs. Thank you for trusting a rack in Manali.\n\n{DAY} at 7 PM, the whole gear room goes online. No more messaging to ask if it's still available. You'll see it, pick it and order it in a minute.\n\nMore soon."], ["Ld2_1", "Add the Join the drops list line to your bio", "Partner", "New drops every Sunday 7 PM. Message us ALERTS on WhatsApp to get first look."]]}, {"id": "d1", "name": "The day before", "off": -1, "note": "Make the time impossible to miss.", "tasks": [["Ld1_0", "Story with a countdown sticker set to launch time", "Me", "Tomorrow. 7 PM. The gear room opens. Set a reminder."], ["Ld1_1", "Story showing 2 of the held-back pieces, cropped close", "Partner", "Two of the pieces going up tomorrow at 7. One of each. First to order gets it."], ["Ld1_2", "Send the broadcast message", "Partner", "Tomorrow at 7 PM we open our online gear room: mountainthrifters.com\nYou're getting the link before anyone else. {OFFER}"], ["Ld1_3", "Charge phones, clear the evening, decide who answers WhatsApp", "Both", ""]]}, {"id": "d0", "name": "Launch day", "off": 0, "note": "Everything changes at once, then the drop.", "tasks": [["Ld0_0", "Morning: change the profile picture, bio and link on Instagram", "Me", "Mountain gear, thrifted and new.\nFrom Manali. Shipped across India.\nNew drop every Sunday 7 PM.\nShop: mountainthrifters.com"], ["Ld0_1", "Morning: change the WhatsApp and Facebook Page pictures to the new logo", "Partner", ""], ["Ld0_2", "6:30 PM: Story, 30 minutes to go", "Me", "30 minutes. mountainthrifters.com opens at 7."], ["Ld0_3", "7:00 PM: post the launch Reel and pin it", "Me", "The gear room is open.\n\nMountain gear from the brands you know, thrifted and new. Filter by brand and size, order in a minute, shipped from Manali across India.\n\nmountainthrifters.com (link in bio)\n{OFFER}"], ["Ld0_4", "7:05 PM: add the held-back pieces with Also post to Instagram on", "Partner", ""], ["Ld0_5", "7:10 PM: send the broadcast with the link", "Partner", "We're live: mountainthrifters.com\nNew pieces just went up. One of each, so be quick. {OFFER}"], ["Ld0_6", "All evening: answer every WhatsApp and comment within minutes", "Both", ""], ["Ld0_7", "All evening: post SOLD screenshots and first-order thank-yous to Stories", "Me", "First piece gone in {X} minutes. Thank you!"]]}, {"id": "w1", "name": "The week after", "off": 1, "note": "Turn the launch into a routine.", "tasks": [["Lw1_0", "Day 1: thank-you Story with launch numbers", "Me", "{N} pieces found new homes in 24 hours. Thank you. More going up Sunday at 7."], ["Lw1_1", "Day 2: post the how-to-order video and save it to a highlight", "Me", "How to order from us, in four steps. Pick your gear, add your address, send it to us on WhatsApp, pay by UPI. We ship across India."], ["Lw1_2", "Day 3: ask the first buyers for a photo and a Google review", "Partner", "Hope the gear is treating you well! If you have a minute, a photo or a quick review would mean a lot: {REVIEW LINK}"], ["Lw1_3", "Day 4: post the cinematic Reel", "Me", "Good gear. Fair prices. mountainthrifters.com"], ["Lw1_4", "Day 5: check Numbers and note what sold fastest", "Both", ""], ["Lw1_5", "Day 6: tease Sunday's drop in Stories", "Partner", "Sunday, 7 PM. New gear going up. Here's a look at three of them."], ["Lw1_6", "Day 7: run the first regular Sunday drop", "Both", ""], ["Lw1_7", "Day 7: end the launch offer and remove it from the bio", "Me", ""]]}];
+var KEY='';try{KEY=localStorage.getItem('mt_admin_key')||'';}catch(e){}
+var app=document.getElementById('app'),plan={state:{},custom:[]},open=null;
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function api(body){var o={headers:{'x-admin-key':KEY}};if(body){o.method='POST';o.headers['content-type']='application/json';o.body=JSON.stringify(body);}
+  return fetch('/api/admin/plan',o).then(function(r){if(r.status===403)throw new Error('signin');return r.json();});}
+function st(id){return plan.state[id]||{};}
+function launch(){var d=st('L_date').note;return d?new Date(d+'T19:00:00+05:30'):null;}
+function offer(){return st('L_offer').note||'';}
+function dayName(off){var L=launch();if(!L)return off===0?'launch day':'';var d=new Date(L.getTime()+off*864e5);return d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short',timeZone:'Asia/Kolkata'});}
+function fill(text){var L=launch();var o=offer();
+  return text.replace(/\{DAY\}/g,L?L.toLocaleDateString('en-IN',{weekday:'long',timeZone:'Asia/Kolkata'}):'[launch day]').replace(/ ?\{OFFER\}/g,o&&o!=='None'?(o==='Free shipping'?'\nFree shipping for the first 48 hours.':'\nRs 200 off your first order for the first 48 hours.'):'');}
+function todayOff(){var L=launch();if(!L)return null;var a=new Date(new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'})),b=new Date(st('L_date').note);return Math.round((a-b)/864e5);}
+function draw(){
+  var all=[],to=todayOff(),cur=null;
+  PH.forEach(function(ph){ph.tasks.forEach(function(t){all.push(t[0]);});
+    if(to!==null&&ph.off!==null){if((ph.off<=0&&to===ph.off)||(ph.off===1&&to>=1&&to<=7)||(ph.off===-3&&to<-3))cur=cur||ph.id;}});
+  var done=all.filter(function(i){return st(i).done;}).length,L=launch(),left='Not set';
+  if(L){var ms=L-new Date();left=ms<=0?'Live':(Math.floor(ms/864e5)+'d '+Math.floor(ms%864e5/36e5)+'h');}
+  var ready=PH[0].tasks.filter(function(t){return st(t[0]).done;}).length;
+  if(open===null)open=cur||(ready<PH[0].tasks.length?'ready':'d3');
+  app.className='';
+  app.innerHTML='<div class="set"><div><label for="ld">Launch date (goes live at 7 PM IST)</label><input id="ld" type="date" value="'+esc(st('L_date').note||'')+'"></div>'+
+   '<div><label for="lo">Launch offer</label><select id="lo">'+['','Free shipping','Rs 200 off','None'].map(function(o){return '<option'+(offer()===o?' selected':'')+' value="'+o+'">'+(o||'Not decided')+'</option>';}).join('')+'</select></div></div>'+
+   '<div class="top"><div class="kpi"><b>'+left+'</b><span>Until launch</span></div><div class="kpi"><b>'+ready+'/'+PH[0].tasks.length+'</b><span>Ready checks</span></div><div class="kpi"><b>'+done+'/'+all.length+'</b><span>All tasks done</span></div></div>'+
+   '<div class="prog"><i style="width:'+(done/all.length*100)+'%"></i></div>'+
+   PH.map(function(ph){
+     var d=ph.tasks.filter(function(t){return st(t[0]).done;}).length;
+     var when=ph.off===null?'Before anything else':ph.off===1?(L?dayName(1)+' to '+dayName(7):'Days 1 to 7'):(dayName(ph.off)||'');
+     return '<details class="ph'+(cur===ph.id?' today':'')+'" data-ph="'+ph.id+'"'+(open===ph.id?' open':'')+'><summary><span><span class="pt">'+esc(ph.name)+(cur===ph.id?' · now':'')+'</span><br><span class="dim">'+esc(when)+(when?' · ':'')+esc(ph.note)+'</span></span><span class="tag">'+d+'/'+ph.tasks.length+'</span></summary>'+
+       ph.tasks.map(function(t){var s=st(t[0]),on=!!s.done,who=s.who||t[2],cap=t[3]?fill(t[3]):'';
+         return '<div class="task'+(on?' done':'')+'"><div class="row"><button class="chk'+(on?' on':'')+'" data-done="'+t[0]+'" aria-pressed="'+on+'" aria-label="'+esc(t[1])+'">'+(on?'✓':'')+'</button><div class="tt">'+esc(t[1])+'</div><button class="who" data-who="'+t[0]+'" aria-label="Who does this: '+esc(who)+'. Tap to change">'+esc(who)+'</button></div>'+
+           (cap?'<div class="cap">'+esc(cap)+'</div><button class="copy" data-copy="'+esc(cap)+'">Copy the words</button>':'')+'</div>';}).join('')+'</details>';
+   }).join('')+
+   '<p class="dim" style="margin-top:24px">Words in brackets, like {X} or {REVIEW LINK}, are for you to fill in. Setting the date and offer above updates every caption.</p>';
+}
+function save(body){return api(body).then(function(d){plan=d;draw();}).catch(fail);}
+function fail(e){app.innerHTML=e.message==='signin'?'Sign in to the <a href="/admin.html">owner app</a> on this device first, then come back.':'Could not load. Check your connection and reload.';}
+app.addEventListener('toggle',function(e){var d=e.target;if(d.classList&&d.classList.contains('ph')&&d.open)open=d.getAttribute('data-ph');},true);
+app.addEventListener('change',function(e){if(e.target.id==='ld')save({set:{id:'L_date',note:e.target.value}});if(e.target.id==='lo')save({set:{id:'L_offer',note:e.target.value}});});
+app.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var id;
+  if((id=b.getAttribute('data-done')))save({set:{id:id,done:st(id).done?'':'yes'}});
+  else if((id=b.getAttribute('data-who'))){var o=['Me','Partner','Both'];save({set:{id:id,who:o[(o.indexOf(b.textContent)+1)%3]}});}
+  else if(b.hasAttribute('data-copy')){var t=b.getAttribute('data-copy');(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='Copied';},function(){b.textContent='Press and hold the text to copy';});}
+});
+if(!KEY)fail(new Error('signin'));else api().then(function(d){plan=d;draw();}).catch(fail);
+})();
+</script>
+</body>
+</html>
