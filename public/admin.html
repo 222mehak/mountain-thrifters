@@ -118,6 +118,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 
 <section id="t-add" hidden>
 <h1>Add stock</h1>
+<p class="msg" id="a-top" role="status" style="margin:0 0 6px;min-height:0"></p>
 <div class="stp"><b>1</b> Photos</div>
 <div class="shots" id="shots"></div>
 <input id="file" type="file" accept="image/*" multiple hidden>
@@ -267,6 +268,22 @@ function shrink(file){
     img.src=url;
   });
 }
+// Instagram only accepts photos between 4:5 (tall) and 1.91:1 (wide). Anything
+// outside that gets a dark border added, for the Instagram copy only.
+function igSafe(dataUrl){
+  return new Promise(function(done){
+    var img=new Image();
+    img.onload=function(){
+      var r=img.width/img.height,w=img.width,h=img.height;
+      if(r>=0.8&&r<=1.91){done('');return;}
+      if(r<0.8)w=Math.round(h*0.8);else h=Math.round(w/1.91);
+      var c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');
+      x.fillStyle='#181B19';x.fillRect(0,0,w,h);x.drawImage(img,Math.round((w-img.width)/2),Math.round((h-img.height)/2));
+      done(c.toDataURL('image/jpeg',0.85));
+    };
+    img.onerror=function(){done('');};img.src=dataUrl;
+  });
+}
 $('file').onchange=function(){
   var files=[].slice.call(this.files,0,6-shots.length);this.value='';
   Promise.all(files.map(shrink)).then(function(list){shots=shots.concat(list);drawShots();}).catch(function(e){say('a-msg',e.message,'bad');});
@@ -281,9 +298,10 @@ $('a-go').onclick=function(){
   document.querySelectorAll('.miss').forEach(function(x){x.classList.remove('miss');});
   for(var i=0;i<need.length;i++)if(need[i][0]){var el=$(need[i][1]);el.classList.add('miss');el.scrollIntoView({block:'center'});say('a-msg',need[i][2],'bad');return;}
   btn.disabled=true;btn.textContent='Uploading…';say('a-msg','');
-  api('product',body).then(function(r){
+  (body.postToInstagram?igSafe(shots[0]):Promise.resolve('')).then(function(sq){body.igImage=sq;return api('product',body);}).then(function(r){
     var ig=r.instagram==='posted'?' Posted to Instagram too.':r.instagram==='posted, and on Facebook'?' Posted to Instagram and Facebook too.':(r.instagram&&r.instagram!=='not requested'?' Instagram: '+r.instagram+'.':'');
-    say('a-msg','Live on the shop.'+ig,'good');
+    var okIg=!body.postToInstagram||/^posted/.test(r.instagram||'');
+    say('a-msg','Live on the shop.'+ig,okIg?'good':'bad');say('a-top','Last piece: live on the shop.'+ig,okIg?'good':'bad');
     shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc'].forEach(function(i){$(i).value='';});profitHint();fillSubs();loadBrands();window.scrollTo(0,0);
   }).catch(function(e){say('a-msg',e.message,'bad');}).then(function(){btn.disabled=false;btn.textContent='Put it live';});
 };

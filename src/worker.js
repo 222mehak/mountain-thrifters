@@ -233,6 +233,17 @@ async function addProduct(request, env, body) {
   const product = { id, name, brand: clean(body.brand, 40), category: clean(body.category, 40), sub: clean(body.sub, 40), gender: clean(body.gender, 12),
     cost: String(body.cost == null ? '' : body.cost).replace(/[^\d]/g, '') === '' ? null : parseInt(String(body.cost).replace(/[^\d]/g, ''), 10),
     size: clean(body.size, 20), condition: clean(body.condition, 20), price, description: clean(body.description, 600), photo: photos[0], photos, colors: [], sold: false };
+  // A copy of the first photo reshaped to a size Instagram accepts, when the original is too tall or wide.
+  const igm = /^data:(image\/jpeg);base64,(.+)$/.exec(String(body.igImage || ''));
+  if (igm) {
+    const bin = atob(igm[2]);
+    if (bin.length <= 1800000) {
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      stmts.push(env.DB.prepare('INSERT INTO images (id, product_id, type, bytes) VALUES (?, ?, ?, ?)').bind(id + '-ig', id, igm[1], bytes));
+      product.igPhoto = '/img/' + id + '-ig';
+    }
+  }
   stmts.push(env.DB.prepare('INSERT INTO products (id, data, at) VALUES (?, ?, ?)').bind(id, JSON.stringify(product), new Date().toISOString()));
   await env.DB.batch(stmts);
   let instagram = 'not requested';
@@ -251,7 +262,7 @@ async function igPublish(request, env, product) {
     '\n\nOne of one. Shop it at ' + shop + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
   try {
     const make = new URL(auth.base + '/' + auth.id + '/media');
-    make.searchParams.set('image_url', origin + product.photo);
+    make.searchParams.set('image_url', origin + (product.igPhoto || product.photo));
     make.searchParams.set('caption', caption);
     make.searchParams.set('access_token', token);
     const a = await (await fetch(make, { method: 'POST' })).json();
