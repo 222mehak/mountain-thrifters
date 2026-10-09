@@ -462,57 +462,83 @@ function guideHtml(text) {
   flush(); return out.join('');
 }
 async function guideList(env, all) {
+  // One-time: put the two starter guides up as published, in the owners' voice.
+  if ((await setting(env, 'guides_live_v1')) !== '1') {
+    const at = new Date().toISOString();
+    for (const g of GUIDE_DRAFTS) await env.DB.prepare('INSERT INTO guides (slug, data, published, at) VALUES (?, ?, 1, ?) ON CONFLICT(slug) DO UPDATE SET data = excluded.data, published = 1')
+      .bind(g.slug, JSON.stringify({ title: g.title, summary: g.summary, body: g.body }), at).run();
+    await saveSetting(env, 'guides_live_v1', '1'); await saveSetting(env, 'guides_seeded', '1');
+  }
   const rows = await env.DB.prepare('SELECT slug, data, published, at FROM guides ORDER BY at DESC').all();
   return (rows.results || []).filter((r) => all || r.published).map((r) => ({ ...JSON.parse(r.data), slug: r.slug, published: !!r.published, at: r.at }));
 }
 const GUIDE_DRAFTS = [
-  { slug: 'is-my-rain-jacket-still-waterproof', title: 'How to check if a used rain jacket is still waterproof', summary: 'Four checks you can do at home in ten minutes, and which problems can be fixed.',
-    body: `A waterproof jacket can look perfect and still leak. Before you buy one used, or before you trust the one in your cupboard on a trek, run these four checks. You need a tap and ten minutes.
+  { slug: 'is-my-rain-jacket-still-waterproof', title: 'How to check if a used rain jacket is still waterproof', summary: 'Ten minutes, a tap and a t-shirt. Do this before you trust any jacket on a trek.',
+    body: `Okay so here's the thing nobody tells you. A rain jacket can look brand new and still leak like a sieve. We've had jackets come in looking perfect that soaked through in two minutes. And we've had ugly beat-up ones that were bone dry inside.
 
-## 1. The sprinkle test
-Flick some water on the outside. If it sits in round beads and rolls off, the outer coating is still working. If the fabric goes dark and soaks the water up, that coating has worn off. People call this wetting out.
+So you can't tell by looking. You have to test it. Takes ten minutes.
 
-This one is usually fixable. Wash the jacket with a cleaner made for waterproof gear, then tumble dry on low heat for 20 minutes. If water still does not bead, use a spray-on or wash-in reproofer.
+## Flick water on it
+Just wet your fingers and flick. Watch what the water does.
 
-## 2. Look at the seams inside
-Turn the jacket inside out. Every seam should have a strip of tape over it, lying flat. If the tape is lifting, cracked or missing, water will come through there first. Shoulders and hood are the places to look hardest.
+If it sits there in little round beads and rolls off, good sign. If the fabric goes dark and drinks it in, the coating on the outside is gone.
 
-A little lifting tape can be reglued. Tape peeling off everywhere means the jacket is near the end of its life.
+Don't panic if it fails this one. It's the easiest thing to fix. Wash it with a proper waterproof-gear cleaner, then put it in the dryer on low for 20 minutes. Heat wakes the coating back up. Still not beading? Get a reproofing spray. Sorted.
 
-## 3. Check the lining for flaking
-Rub the inside of the jacket, most of all around the neck, shoulders and cuffs. If white flakes or a sticky film come off, the waterproof layer is breaking down. This cannot be fixed. Walk away, or pay rain-cover money for it and nothing more.
+## Turn it inside out and look at the seams
+Every seam should have a strip of tape over it, stuck down flat. Check the shoulders and the hood first because that's where rain hits hardest.
 
-## 4. The shower test
-Put on a light-coloured t-shirt, wear the jacket zipped up with the hood on, and stand under the shower for five minutes. Dark patches on the t-shirt show you exactly where it leaks.
+A bit of tape lifting at one corner, fine, you can glue that. Tape peeling off all over the place? That jacket is tired. Pass.
 
-## What we do
-Every waterproof piece we list gets these checks before it goes up. If the coating needed reviving, we say so in the listing.` },
-  { slug: 'what-to-wear-in-manali-in-winter', title: 'What to wear in Manali in winter', summary: 'A simple layering list for December to February, from people who live here.',
-    body: `Most people arrive in Manali in winter with one big jacket and cold feet. From December to February the town sits around freezing at night, and Solang, Sissu and anywhere past the Atal Tunnel are colder and windier. One thick layer does not handle that well. Three thinner ones do.
+## Rub the inside
+This is the big one. Rub the lining around the neck and shoulders with your thumb.
 
-## The three layers
-- Base layer: a snug thermal top and bottom. Wool or synthetic. Not cotton, which stays wet and makes you cold.
-- Middle layer: a fleece or a light down jacket. This is what keeps the heat in.
-- Outer layer: a shell that blocks wind and snow. It does not need to be thick. It needs to be windproof and at least water resistant.
+If white flaky bits come off, or it feels sticky, the waterproof layer itself is falling apart. There is no fixing this. We don't care how good the brand is or how cheap it's going. Walk away.
 
-You add and remove the middle layer as the day warms up. That is the whole trick.
+## The shower test
+Feels silly, works every time. Put on a light coloured t-shirt, zip the jacket all the way up, hood on, and stand under the shower for five minutes.
 
-## Feet and hands
-- Boots with a real grip. Mall Road is fine in trainers until it ices over, and then it is not.
-- Wool socks, two pairs. Dry feet matter more than thick boots.
-- Gloves you can still use a phone in, and a warmer pair if you are heading for snow.
+Take it off. Any dark patches on your t-shirt are exactly where it leaks.
 
-## The things people forget
-- A beanie that covers your ears.
-- Sunglasses. Snow glare at altitude is harsh, even on a cloudy day.
-- A neck warmer or buff. It weighs nothing and makes the biggest difference in wind.
-- Lip balm and sunscreen.
+## That's it
+Four checks. If a jacket passes all of them it will keep you dry, doesn't matter if it's ten years old.
 
-## If you are going into the snow
-For Solang, Sissu or a snow trek, add waterproof pants and waterproof gloves. Jeans in snow are wet in ten minutes and frozen in twenty.
+We run these on the waterproof pieces before they go up on the site. If one needed its coating brought back to life, we'll say so in the listing. Got a jacket you're not sure about? Message us on WhatsApp with a photo of the inside and we'll tell you what we think.` },
+  { slug: 'what-to-wear-in-manali-in-winter', title: 'What to wear in Manali in winter', summary: 'What actually keeps you warm here from December to February, from people who live in it.',
+    body: `Every winter we watch the same thing happen. Someone gets off the Volvo in one giant puffy jacket, jeans and sneakers. By evening they're freezing and their feet are wet.
 
-## Already here and under-packed?
-It happens to half the people who visit. Message us on WhatsApp and we can get gear to your hostel or hotel in Manali the same day.` },
+It's not that the jacket is bad. It's that one big layer doesn't work up here. You're cold outside, then you walk into a cafe with a bukhari going and you're boiling, and you've got nothing to take off.
+
+Here's what works.
+
+## Three thin layers beat one thick one
+Next to your skin: a snug thermal, top and bottom. Wool or synthetic. Please not cotton. Cotton gets damp and stays damp and then you're cold all day.
+
+In the middle: a fleece or a light down jacket. This is the layer doing the real work of keeping you warm.
+
+On the outside: a shell that stops wind and snow. It doesn't have to be thick at all. It just has to block the wind.
+
+Too warm? Take the middle one off. Getting cold? Put it back. That's the whole secret.
+
+## Your feet matter more than your jacket
+Mall Road is totally fine in sneakers. Right up until it ices over. Then it's a skating rink and you're the entertainment.
+
+Get boots with a proper grip. Bring two pairs of wool socks so one can dry while you wear the other. Dry feet will keep you happier than the most expensive jacket.
+
+## The small stuff everyone forgets
+- A beanie that actually covers your ears
+- Sunglasses. Snow glare up here is brutal, even when it's cloudy
+- A buff or neck warmer. Weighs nothing, changes everything when the wind picks up
+- Gloves you can still use your phone in
+- Lip balm and sunscreen. Yes, in winter
+
+## Going up to the snow?
+Solang, Sissu, anywhere past the Atal Tunnel, it's a different level of cold and wind. Add waterproof pants and waterproof gloves.
+
+Jeans in snow are soaked in ten minutes and frozen stiff in twenty. Ask us how we know.
+
+## Landed here and packed wrong?
+Happens to half the people who visit, so don't feel bad. Message us on WhatsApp, tell us what you're missing and your size, and we'll sort you out.` },
 ];
 
 const slug = (v) => String(v).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
