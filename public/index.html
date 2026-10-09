@@ -136,6 +136,16 @@ dl.facts{margin:26px 0;border-top:1px solid var(--line)}
 dl.facts div{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}
 dl.facts dt{color:var(--dim)}
 dl.facts dd{margin:0;text-align:right}
+.tested{display:flex;gap:12px;align-items:baseline;border:1px solid var(--pop);padding:12px 14px;margin-top:22px;margin-bottom:-6px}
+.tested b{font-family:var(--head);font-weight:600;font-size:20px;text-transform:uppercase;letter-spacing:.04em;color:var(--pop);white-space:nowrap}
+.tested span{color:var(--mute);font-size:14px}
+.guide{max-width:680px}
+.guide h2{font-size:30px;margin:36px 0 10px}
+.guide p,.guide li{color:#D9DBD4;font-size:17px;line-height:1.7}
+.guide ul{padding-left:20px}
+.glist a{display:block;text-decoration:none;border-top:1px solid var(--line);padding:22px 0}
+.glist a:hover h3{color:var(--pop)}
+.glist p{margin:8px 0 0;color:var(--mute)}
 .back{display:inline-block;margin-bottom:24px;font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-decoration:none;padding:10px 0}
 .back:hover{color:var(--ink)}
 
@@ -191,6 +201,7 @@ section{padding:60px 0}
 <a href="/shop" data-link data-nav="shop">Shop gear</a>
 <a href="/#story" data-link data-nav="story">Our story</a>
 <a href="/sell" data-link data-nav="sell">Sell with us</a>
+<a href="/guides" data-link data-nav="guides">Guides</a>
 <a href="/feed" data-link data-nav="feed">Instagram</a>
 <a href="/bag" data-link data-nav="bag">Bag (<span id="bagn">0</span>)</a>
 </nav>
@@ -344,11 +355,12 @@ function product(id){
   if(!p){app.innerHTML='<div class="wrap page"><h1>This piece is gone</h1><p class="mute">It may have sold or been taken down.</p><a class="btn" href="/shop" data-link>Back to the shop</a></div>';return;}
   var photos=(p.photos&&p.photos.length?p.photos:(p.photo?[p.photo]:[]));
   var inBag=bag().indexOf(p.id)>-1;
-  var facts=[['Brand',p.brand],['Size',p.size],['Condition',p.condition],['Category',[p.category,p.sub].filter(Boolean).join(' / ')],['For',p.gender]].filter(function(r){return r[1];});
+  var facts=[['Brand',p.brand],['Size',p.size],['Condition',p.condition],['Category',[p.category,p.sub].filter(Boolean).join(' / ')],['For',p.gender],['Waterproofing',p.waterproof],['Weight',p.weight?p.weight+' g':''],['Built with',(p.tech||[]).join(', ')]].filter(function(r){return r[1];});
+  var tested=p.tested?'<div class="tested"><b>Manali-tested</b><span>Worn and checked by us, up here.'+(p.testedLink?' <a href="'+esc(p.testedLink)+'" target="_blank" rel="noopener">Watch it in use.</a>':'')+'</span></div>':'';
   app.innerHTML='<div class="wrap page"><a class="back" href="/shop" data-link>Back to the shop</a><div class="pdp"><div class="gal"><div id="mainpic">'+pic(p,photos[0])+'</div>'+
   (photos.length>1?'<div class="thumbs">'+photos.map(function(s,i){return '<button type="button" data-pic="'+esc(s)+'" class="'+(i?'':'on')+'" aria-label="Photo '+(i+1)+'"><img src="'+esc(s)+'" alt=""></button>';}).join('')+'</div>':'')+'</div>'+
   '<div><div class="eye">'+esc(p.brand||'One of one')+'</div><h1>'+esc(p.name)+'</h1><div class="price">'+rs(p.price)+'</div>'+
-  '<dl class="facts">'+facts.map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd></div>';}).join('')+'</dl>'+
+  tested+'<dl class="facts">'+facts.map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd></div>';}).join('')+'</dl>'+
   (p.description?'<p class="mute">'+esc(p.description)+'</p>':'')+
   (p.sold?'<button class="btn wide" disabled>Sold</button><p class="dim">This one found a home. <a href="/shop" data-link>See what is still here.</a></p>'
     :inBag?'<a class="btn wide pop" href="/checkout" data-link>Buy now</a><a class="btn wide ghost" style="margin-top:10px" href="/bag" data-link>In your bag. View bag</a>'
@@ -411,6 +423,21 @@ function sell(){
   '<label for="s-what">Tell us about it</label><textarea id="s-what" name="what" placeholder="Brand, what it is, size, condition" required></textarea>'+
   '<button class="btn wa wide" style="margin-top:20px">Send on WhatsApp</button><p class="dim" style="font-size:14px">WhatsApp opens with your message written. Add your photos there and press send.</p></form></div></div>';
 }
+function guides(slugv){
+  app.innerHTML='<div class="wrap page mute">Loading…</div>';
+  (S.guides?Promise.resolve():fetch('/api/guides').then(function(r){return r.json();}).then(function(d){S.guides=d.guides||[];}).catch(function(){S.guides=[];})).then(function(){
+    if(location.pathname.indexOf('/guides')!==0)return;
+    if(!slugv){
+      document.title='Mountain gear guides · The Mountain Thrifters';
+      app.innerHTML='<div class="wrap page"><div class="eye">From people who live up here</div><h1 style="margin:10px 0 28px">Guides</h1>'+(S.guides.length?'<div class="glist guide">'+S.guides.map(function(g){return '<a href="/guides/'+esc(g.slug)+'" data-link><h3>'+esc(g.title)+'</h3><p>'+esc(g.summary)+'</p></a>';}).join('')+'</div>':'<div class="empty">Our first guides are being written. Check back soon.</div>')+'</div>';
+      return;
+    }
+    var g=S.guides.filter(function(x){return x.slug===slugv;})[0];
+    if(!g){app.innerHTML='<div class="wrap page"><h1>Guide not found</h1><a class="btn" href="/guides" data-link>All guides</a></div>';return;}
+    document.title=g.title+' · The Mountain Thrifters';
+    app.innerHTML='<div class="wrap page"><a class="back" href="/guides" data-link>All guides</a><div class="guide"><h1 style="font-size:clamp(38px,6vw,60px)">'+esc(g.title)+'</h1><p class="mute" style="font-size:18px">'+esc(g.summary)+'</p>'+g.html+'<div style="margin-top:40px"><a class="btn pop" href="/shop" data-link>Shop the gear</a></div></div></div>';
+  });
+}
 function feed(){
   app.innerHTML='<div class="wrap page"><div class="shead"><div><div class="eye">@mountain_thrifters</div><h1 style="margin-top:10px">Shop our Instagram</h1><p class="mute" style="margin:10px 0 0">Tap a photo to buy that piece.</p></div><a class="btn ghost" href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Follow us</a></div><div id="fg" class="mute">Loading the feed…</div></div>';
   (S.ig?Promise.resolve():loadIg('')).then(drawFeed);
@@ -422,7 +449,7 @@ function drawFeed(){
 }
 
 // ----- routing -----
-var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
+var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',guides:'Mountain gear guides',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
 function render(){
   var path=location.pathname.replace(/\/+$/,'')||'/',name=path.split('/')[1]||'home';
   document.body.classList.toggle('home',path==='/');
@@ -440,6 +467,7 @@ function render(){
   else if(path==='/done')done();
   else if(path==='/sell')sell();
   else if(path==='/feed')feed();
+  else if(path==='/guides'||path.indexOf('/guides/')===0)guides(path.slice(8));
   else home();
   if(name==='c'||name==='p')name='shop';
   document.querySelectorAll('[data-nav]').forEach(function(a){a.classList.toggle('on',a.getAttribute('data-nav')===name);});

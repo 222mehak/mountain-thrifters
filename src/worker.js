@@ -54,6 +54,7 @@ async function init(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, data TEXT, at TEXT)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, product_id TEXT, type TEXT, bytes BLOB)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS guides (slug TEXT PRIMARY KEY, data TEXT, published INTEGER, at TEXT)'),
   ]);
   ready = true;
 }
@@ -241,6 +242,10 @@ async function addProduct(request, env, body) {
   }
   const product = { id, name, brand: clean(body.brand, 40), category: clean(body.category, 40), sub: clean(body.sub, 40), gender: clean(body.gender, 12),
     cost: String(body.cost == null ? '' : body.cost).replace(/[^\d]/g, '') === '' ? null : parseInt(String(body.cost).replace(/[^\d]/g, ''), 10),
+    // Technical details: only what the owner entered, never guessed.
+    waterproof: clean(body.waterproof, 30), weight: parseInt(String(body.weight == null ? '' : body.weight).replace(/[^\d]/g, ''), 10) || null,
+    tech: (Array.isArray(body.tech) ? body.tech : []).map((x) => clean(x, 30)).filter(Boolean).slice(0, 10),
+    tested: !!body.tested, testedLink: /^https:\/\/(www\.)?instagram\.com\//.test(String(body.testedLink || '')) ? clean(body.testedLink, 200) : '',
     size: clean(body.size, 20), condition: clean(body.condition, 20), price, description: clean(body.description, 600), photo: photos[0], photos, colors: [], sold: false };
   // A copy of the first photo reshaped to a size Instagram accepts, when the original is too tall or wide.
   const igm = /^data:(image\/jpeg);base64,(.+)$/.exec(String(body.igImage || ''));
@@ -329,6 +334,15 @@ async function admin(request, env, path, ctx) {
   }
   if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx, true), hideSamples: (await setting(env, 'hide_samples')) === '1' });
   if (path === '/api/admin/stats' && request.method === 'GET') return stats(request, env, ctx);
+  if (path === '/api/admin/guides' && request.method === 'GET') {
+    // The first time the owner opens Guides, two starter drafts are added for them to edit.
+    if ((await setting(env, 'guides_seeded')) !== '1') {
+      const at = new Date().toISOString();
+      for (const g of GUIDE_DRAFTS) await env.DB.prepare('INSERT OR IGNORE INTO guides (slug, data, published, at) VALUES (?, ?, 0, ?)').bind(g.slug, JSON.stringify({ title: g.title, summary: g.summary, body: g.body }), at).run();
+      await saveSetting(env, 'guides_seeded', '1');
+    }
+    return json({ guides: await guideList(env, true) });
+  }
   if (path === '/api/admin/plan' && request.method === 'GET') {
     let plan = {}; try { plan = JSON.parse(await setting(env, 'plan')) || {}; } catch (e) { plan = {}; }
     return json({ state: plan.state || {}, custom: plan.custom || [] });
@@ -367,6 +381,16 @@ async function admin(request, env, path, ctx) {
     await saveSetting(env, 'plan', JSON.stringify(plan));
     return json({ ok: true, state: plan.state, custom: plan.custom });
   }
+  if (path === '/api/admin/guide') {
+    const title = clean(body.title, 120); if (!title) return json({ error: 'details', message: 'Give the guide a title.' }, 400);
+    const slugv = clean(body.slug, 80) || slug(title).slice(0, 80);
+    const data = { title, summary: clean(body.summary, 240), body: String(body.body || '').replace(/[\u0000-\u0008\u000b-\u001f]/g, '').slice(0, 20000) };
+    const old = await env.DB.prepare('SELECT at FROM guides WHERE slug = ?').bind(slugv).first();
+    await env.DB.prepare('INSERT INTO guides (slug, data, published, at) VALUES (?, ?, ?, ?) ON CONFLICT(slug) DO UPDATE SET data = excluded.data, published = excluded.published')
+      .bind(slugv, JSON.stringify(data), body.published ? 1 : 0, (old && old.at) || new Date().toISOString()).run();
+    return json({ ok: true, slug: slugv });
+  }
+  if (path === '/api/admin/guide-delete') { await env.DB.prepare('DELETE FROM guides WHERE slug = ?').bind(String(body.slug)).run(); return json({ ok: true }); }
   if (path === '/api/admin/banner') { await saveSetting(env, 'banner', clean(body.text, 140) || '-'); return json({ ok: true }); }
   if (path === '/api/admin/samples') { await saveSetting(env, 'hide_samples', body.hide ? '1' : '0'); return json({ ok: true }); }
   if (path === '/api/admin/categories') {
@@ -424,6 +448,73 @@ async function admin(request, env, path, ctx) {
 // ---------- Pages, photos and search-engine files ----------
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const SITE = 'https://mountainthrifters.com';
+// Guides are written as plain text: "## " starts a heading, "- " a list item, a blank line a new paragraph.
+function guideHtml(text) {
+  const out = []; let list = [], para = [];
+  const flush = () => { if (para.length) { out.push('<p>' + esc(para.join(' ')) + '</p>'); para = []; } if (list.length) { out.push('<ul>' + list.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>'); list = []; } };
+  for (const raw of String(text || '').split('\n')) {
+    const line = raw.trim();
+    if (!line) flush();
+    else if (line.startsWith('## ')) { flush(); out.push('<h2>' + esc(line.slice(3)) + '</h2>'); }
+    else if (line.startsWith('- ')) { if (para.length) flush(); list.push(line.slice(2)); }
+    else { if (list.length) flush(); para.push(line); }
+  }
+  flush(); return out.join('');
+}
+async function guideList(env, all) {
+  const rows = await env.DB.prepare('SELECT slug, data, published, at FROM guides ORDER BY at DESC').all();
+  return (rows.results || []).filter((r) => all || r.published).map((r) => ({ ...JSON.parse(r.data), slug: r.slug, published: !!r.published, at: r.at }));
+}
+const GUIDE_DRAFTS = [
+  { slug: 'is-my-rain-jacket-still-waterproof', title: 'How to check if a used rain jacket is still waterproof', summary: 'Four checks you can do at home in ten minutes, and which problems can be fixed.',
+    body: `A waterproof jacket can look perfect and still leak. Before you buy one used, or before you trust the one in your cupboard on a trek, run these four checks. You need a tap and ten minutes.
+
+## 1. The sprinkle test
+Flick some water on the outside. If it sits in round beads and rolls off, the outer coating is still working. If the fabric goes dark and soaks the water up, that coating has worn off. People call this wetting out.
+
+This one is usually fixable. Wash the jacket with a cleaner made for waterproof gear, then tumble dry on low heat for 20 minutes. If water still does not bead, use a spray-on or wash-in reproofer.
+
+## 2. Look at the seams inside
+Turn the jacket inside out. Every seam should have a strip of tape over it, lying flat. If the tape is lifting, cracked or missing, water will come through there first. Shoulders and hood are the places to look hardest.
+
+A little lifting tape can be reglued. Tape peeling off everywhere means the jacket is near the end of its life.
+
+## 3. Check the lining for flaking
+Rub the inside of the jacket, most of all around the neck, shoulders and cuffs. If white flakes or a sticky film come off, the waterproof layer is breaking down. This cannot be fixed. Walk away, or pay rain-cover money for it and nothing more.
+
+## 4. The shower test
+Put on a light-coloured t-shirt, wear the jacket zipped up with the hood on, and stand under the shower for five minutes. Dark patches on the t-shirt show you exactly where it leaks.
+
+## What we do
+Every waterproof piece we list gets these checks before it goes up. If the coating needed reviving, we say so in the listing.` },
+  { slug: 'what-to-wear-in-manali-in-winter', title: 'What to wear in Manali in winter', summary: 'A simple layering list for December to February, from people who live here.',
+    body: `Most people arrive in Manali in winter with one big jacket and cold feet. From December to February the town sits around freezing at night, and Solang, Sissu and anywhere past the Atal Tunnel are colder and windier. One thick layer does not handle that well. Three thinner ones do.
+
+## The three layers
+- Base layer: a snug thermal top and bottom. Wool or synthetic. Not cotton, which stays wet and makes you cold.
+- Middle layer: a fleece or a light down jacket. This is what keeps the heat in.
+- Outer layer: a shell that blocks wind and snow. It does not need to be thick. It needs to be windproof and at least water resistant.
+
+You add and remove the middle layer as the day warms up. That is the whole trick.
+
+## Feet and hands
+- Boots with a real grip. Mall Road is fine in trainers until it ices over, and then it is not.
+- Wool socks, two pairs. Dry feet matter more than thick boots.
+- Gloves you can still use a phone in, and a warmer pair if you are heading for snow.
+
+## The things people forget
+- A beanie that covers your ears.
+- Sunglasses. Snow glare at altitude is harsh, even on a cloudy day.
+- A neck warmer or buff. It weighs nothing and makes the biggest difference in wind.
+- Lip balm and sunscreen.
+
+## If you are going into the snow
+For Solang, Sissu or a snow trek, add waterproof pants and waterproof gloves. Jeans in snow are wet in ten minutes and frozen in twenty.
+
+## Already here and under-packed?
+It happens to half the people who visit. Message us on WhatsApp and we can get gear to your hostel or hotel in Manali the same day.` },
+];
+
 const slug = (v) => String(v).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const rupees = (n) => 'Rs ' + Number(n || 0).toLocaleString('en-IN');
 const PAGES = { '/': ['Thrifted outdoor gear from Manali, delivered across India', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Thrifted and new, at fair prices, shipped from Manali across India.'],
@@ -459,13 +550,16 @@ async function site(request, env, ctx, url) {
     const urls = ['/', '/shop', '/sell', '/feed'].map((u) => [u, '']);
     for (const c of cats) { urls.push(['/c/' + slug(c.name), '']); for (const x of c.subs || []) urls.push(['/c/' + slug(x), '']); }
     for (const p of products) urls.push(['/p/' + encodeURIComponent(p.id), p.listedAt || '']);
+    const gl = await guideList(env, false);
+    if (gl.length) urls.push(['/guides', '']);
+    for (const g of gl) urls.push(['/guides/' + g.slug, g.at]);
     const seen = new Set();
     return new Response('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
       urls.filter((u) => !seen.has(u[0]) && seen.add(u[0])).map((u) => '  <url><loc>' + esc(SITE + u[0]) + '</loc>' + (u[1] ? '<lastmod>' + esc(u[1].slice(0, 10)) + '</lastmod>' : '') + '</url>').join('\n') +
       '\n</urlset>\n', { headers: { 'content-type': 'application/xml' } });
   }
-  const isProduct = path.startsWith('/p/'), isCat = path.startsWith('/c/');
-  if (!isProduct && !isCat && !(path in PAGES)) return env.ASSETS.fetch(request);
+  const isProduct = path.startsWith('/p/'), isCat = path.startsWith('/c/'), isGuide = path === '/guides' || path.startsWith('/guides/');
+  if (!isProduct && !isCat && !isGuide && !(path in PAGES)) return env.ASSETS.fetch(request);
   // Every shop page is the same app shell, with the title, description and a
   // plain-HTML copy of the content written in for search engines and link previews.
   const shell = await env.ASSETS.fetch(new Request(new URL('/', url)));
@@ -487,7 +581,8 @@ async function site(request, env, ctx, url) {
       desc = ['Thrifted ' + full, p.size || '', p.condition ? p.condition.toLowerCase() : '', rupees(p.price), 'One of one, shipped from Manali across India.'].filter(Boolean).join(', ');
       if (img) image = img;
       noindex = !!p.sample;
-      const facts = [['Brand', p.brand], ['Size', p.size], ['Condition', p.condition], ['Category', [p.category, p.sub].filter(Boolean).join(' / ')], ['For', p.gender]].filter((r) => r[1]);
+      const facts = [['Brand', p.brand], ['Size', p.size], ['Condition', p.condition], ['Category', [p.category, p.sub].filter(Boolean).join(' / ')], ['For', p.gender],
+        ['Waterproofing', p.waterproof], ['Weight', p.weight ? p.weight + ' g' : ''], ['Built with', (p.tech || []).join(', ')], ['Manali-tested', p.tested ? 'Yes, worn and checked by us in Manali' : '']].filter((r) => r[1]);
       body = '<p><a href="/shop">Shop</a>' + (p.category ? ' / <a href="/c/' + slug(p.category) + '">' + esc(p.category) + '</a>' : '') + (p.sub ? ' / <a href="/c/' + slug(p.sub) + '">' + esc(p.sub) + '</a>' : '') + '</p>' +
         '<h1>' + esc(full) + '</h1><p>' + rupees(p.price) + (p.sold ? ' (sold)' : '') + '</p>' + (img ? '<img src="' + esc(p.photo) + '" alt="' + esc(full) + '" width="600">' : '') +
         '<ul>' + facts.map((r) => '<li>' + r[0] + ': ' + esc(r[1]) + '</li>').join('') + '</ul>' + (p.description ? '<p>' + esc(p.description) + '</p>' : '') +
@@ -499,6 +594,21 @@ async function site(request, env, ctx, url) {
       const crumbs = [['Shop', '/shop']].concat(p.category ? [[p.category, '/c/' + slug(p.category)]] : []).concat(p.sub ? [[p.sub, '/c/' + slug(p.sub)]] : []).concat([[full, path]]);
       ld.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c[0], item: SITE + c[1] })) });
     } else { status = 404; noindex = true; title = 'This piece is gone'; body = '<h1>This piece is gone</h1><p><a href="/shop">See what is still here.</a></p>'; }
+  } else if (isGuide) {
+    await init(env);
+    const gl = await guideList(env, false);
+    if (path === '/guides') {
+      title = 'Mountain gear guides'; desc = 'Short, practical guides on buying, checking and packing outdoor gear for Manali and the Himalaya, from The Mountain Thrifters.';
+      body = '<h1>Mountain gear guides</h1><p>' + esc(desc) + '</p><ul>' + gl.map((g) => '<li><a href="/guides/' + g.slug + '">' + esc(g.title) + '</a>: ' + esc(g.summary) + '</li>').join('') + '</ul>';
+    } else {
+      const g = gl.find((x) => x.slug === path.slice(8));
+      if (g) {
+        title = g.title; desc = g.summary;
+        body = '<p><a href="/guides">Guides</a></p><h1>' + esc(g.title) + '</h1>' + guideHtml(g.body) + '<p><a href="/shop">Shop mountain gear</a></p>';
+        ld.push({ '@context': 'https://schema.org', '@type': 'Article', headline: g.title, description: g.summary, datePublished: g.at, mainEntityOfPage: SITE + path,
+          author: { '@type': 'Organization', name: 'The Mountain Thrifters' }, publisher: { '@type': 'Organization', name: 'The Mountain Thrifters', logo: { '@type': 'ImageObject', url: SITE + '/icons/icon-512.png' } } });
+      } else { status = 404; noindex = true; title = 'Guide not found'; body = '<h1>Guide not found</h1><p><a href="/guides">See all guides.</a></p>'; }
+    }
   } else if (isCat) {
     const c = findCat(cats, path.slice(3));
     if (c) {
@@ -542,6 +652,7 @@ export default {
       if (!url.pathname.startsWith('/api/')) return await site(request, env, ctx, url);
       await init(env);
       if (url.pathname === '/api/products') return json(await allProducts(request, env, ctx));
+      if (url.pathname === '/api/guides') return json({ guides: (await guideList(env, false)).map((g) => ({ slug: g.slug, title: g.title, summary: g.summary, at: g.at, html: guideHtml(g.body) })) });
       if (url.pathname === '/api/config') return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env) });
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);

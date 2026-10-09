@@ -138,13 +138,21 @@ details.ph>summary::-webkit-details-marker{display:none}
 <div class="fl">Condition</div>
 <div class="seg" id="a-cond"><button type="button" class="on">Barely worn</button><button type="button">Worn in</button><button type="button">Well loved</button></div>
 
-<div class="stp"><b>4</b> Money</div>
+<div class="stp"><b>4</b> Tech details <span class="dim" style="font-family:Figtree;text-transform:none;font-weight:400">optional</span></div>
+<p class="dim" style="margin:0 0 4px">Only tap what you have checked on the piece or its label. Leave the rest.</p>
+<div class="fl">Waterproofing</div><div class="chips" id="c-wp"></div>
+<div class="fl">Built with (tap all that apply)</div><div class="chips" id="c-tech"></div>
+<div class="r2"><div><label for="a-weight">Weight (grams)</label><input id="a-weight" inputmode="numeric" placeholder="420"></div><div><label for="a-tlink">Reel of it in use (link)</label><input id="a-tlink" placeholder="instagram.com/reel/..."></div></div>
+<label class="tog" for="a-tested"><span>Manali-tested: we have worn and checked it here</span><input id="a-tested" type="checkbox"></label>
+<button class="sm" id="a-write" type="button" style="margin-top:14px">Write the description for me</button>
+
+<div class="stp"><b>5</b> Money</div>
 <div class="r2"><div><label for="a-price">Selling price (Rs)</label><input id="a-price" inputmode="numeric"></div>
 <div><label for="a-cost">What you paid (Rs)</label><input id="a-cost" inputmode="numeric"></div></div>
 <p class="dim" style="margin:6px 0 0">What you paid stays private. It is only used for your profit numbers.</p>
 <p class="dim good" id="a-profit" style="margin:4px 0 0"></p>
 
-<div class="stp"><b>5</b> Finish</div>
+<div class="stp"><b>6</b> Finish</div>
 <label for="a-desc" style="margin-top:0">Description (optional)</label><textarea id="a-desc" placeholder="Fit, flaws, anything worth knowing"></textarea>
 <label class="tog" for="a-ig"><span>Also post to Instagram</span><input id="a-ig" type="checkbox"></label>
 <p class="dim" id="igstate" style="margin:6px 0 0"></p>
@@ -171,8 +179,25 @@ details.ph>summary::-webkit-details-marker{display:none}
 
 <section id="t-plan" hidden>
 <h1>Marketing plan</h1>
-<a class="btn pop" href="/launch.html" style="text-decoration:none;margin:0 0 18px">Open the launch planner</a>
+<a class="btn pop" href="/launch.html" style="text-decoration:none;margin:0 0 10px">Open the launch planner</a>
+<button class="btn" id="openguides" type="button" style="margin:0 0 18px;background:transparent;color:var(--ink);border-color:var(--edge)">Write and manage guides</button>
 <div id="plan" class="mute">Loading…</div>
+</section>
+
+<section id="t-guides" hidden>
+<h1>Guides</h1>
+<p class="mute" style="margin-top:0">Short, useful articles that bring people in from Google. Save as a draft until you are happy, then publish.</p>
+<div id="glist" class="mute">Loading…</div>
+<div id="gedit" hidden>
+<label for="g-title">Title</label><input id="g-title" maxlength="120" placeholder="How to check if a used rain jacket is still waterproof">
+<label for="g-sum">One-line summary (shown in Google)</label><input id="g-sum" maxlength="240">
+<label for="g-body">The guide</label><textarea id="g-body" style="min-height:340px"></textarea>
+<p class="dim" style="margin:6px 0 0">Start a line with ## for a heading, and with - for a bullet. Leave an empty line between paragraphs.</p>
+<label class="tog" for="g-pub"><span>Published (visible on the site)</span><input id="g-pub" type="checkbox"></label>
+<button class="btn" id="g-save" type="button">Save</button>
+<div class="acts" style="display:flex;gap:8px;margin-top:10px"><button class="sm" id="g-back" type="button">Back to the list</button><button class="sm" id="g-del" type="button">Delete this guide</button></div>
+<p class="msg" id="g-msg" role="status"></p>
+</div>
 </section>
 
 </main>
@@ -196,7 +221,7 @@ function api(path,body){
 function signOut(){try{localStorage.removeItem('mt_admin_key');}catch(e){}KEY='';show('');}
 function show(tab){
   $('login').hidden=!!KEY;$('tabs').hidden=!KEY;
-  ['add','orders','stock','cats','stats','plan'].forEach(function(t){$('t-'+t).hidden=!KEY||t!==tab;});
+  ['add','orders','stock','cats','stats','plan','guides'].forEach(function(t){$('t-'+t).hidden=!KEY||t!==tab;});
   document.querySelectorAll('nav button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===tab);});
   if(!KEY)return;
   if(tab==='orders')loadOrders();
@@ -204,6 +229,7 @@ function show(tab){
   if(tab==='cats')drawCats();
   if(tab==='stats')loadStats();
   if(tab==='plan')loadPlan();
+  if(tab==='guides')loadGuides();
   window.scrollTo(0,0);
 }
 function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();$('bn').value=c.notice||'';});}
@@ -235,6 +261,24 @@ function fillSubs(){
   chipRow('c-sub',subs,$('a-sub').value);
   chipRow('c-size',SIZES[$('a-cat').value]||['One size'],$('a-size').value);
 }
+// ----- tech details -----
+var WP=['Water resistant','5k mm','10k mm','15k mm','20k mm or more','Gore-Tex'],TECH=['Gore-Tex','Seam-sealed','Windproof','Down fill','Synthetic insulation','Fleece lined','Ripstop','Pit zips','Helmet hood','Snow skirt','Vibram sole','Rain cover','Hip belt','Frame'];
+var wpSel='',techSel=[];
+function drawTech(){chipRow('c-wp',WP,wpSel);$('c-tech').innerHTML=TECH.map(function(v){var on=techSel.indexOf(v)>-1;return '<button type="button" class="'+(on?'on':'')+'" aria-pressed="'+on+'">'+esc(v)+'</button>';}).join('');}
+$('c-wp').onclick=function(e){var b=e.target.closest('button');if(!b)return;wpSel=wpSel===b.textContent?'':b.textContent;drawTech();};
+$('c-tech').onclick=function(e){var b=e.target.closest('button');if(!b)return;var i=techSel.indexOf(b.textContent);if(i>-1)techSel.splice(i,1);else techSel.push(b.textContent);drawTech();};
+// Builds a plain description from what was tapped. It never adds a detail the owner did not choose.
+$('a-write').onclick=function(){
+  var bits=[],type=($('a-sub').value||'piece').toLowerCase().replace(/s$/,''),brand=$('a-brand').value.trim();
+  var what=$('a-name').value.trim();what=what?(brand?what.charAt(0).toLowerCase()+what.slice(1):what):type;
+  bits.push((brand?brand+' ':'')+what+($('a-size').value?', size '+$('a-size').value:'')+'.');
+  if(wpSel)bits.push(wpSel==='Gore-Tex'?'Gore-Tex waterproof membrane.':wpSel==='Water resistant'?'Water resistant, fine for light rain and snow.':'Rated waterproof to '+wpSel.replace(' or more','+')+' when new.');
+  var t=techSel.filter(function(x){return x!=='Gore-Tex'||wpSel!=='Gore-Tex';});if(t.length)bits.push(t.join(', ')+'.');
+  if($('a-weight').value)bits.push('Weighs '+parseInt($('a-weight').value,10)+' g.');
+  bits.push('Condition: '+$('a-cond').querySelector('.on').textContent.toLowerCase()+'.');
+  if($('a-tested').checked)bits.push('Worn and checked by us in Manali.');
+  $('a-desc').value=bits.join(' ');$('a-desc').scrollIntoView({block:'center'});
+};
 function drawBrands(){chipRow('c-brand',brands.slice(0,10),$('a-brand').value);}
 function igState(){api('ig-check').then(function(r){var el=$('igstate');el.textContent='Instagram: '+r.message;el.className='dim '+(r.ok?'good':'');}).catch(function(){});}
 function loadBrands(){return api('products').then(function(d){brands=[];d.products.forEach(function(p){if(p.brand&&brands.indexOf(p.brand)<0)brands.push(p.brand);});drawBrands();}).catch(function(){});}
@@ -296,6 +340,7 @@ function say(id,text,kind){var m=$(id);m.textContent=text;m.className='msg '+(ki
 $('a-go').onclick=function(){
   var btn=this;
   var body={images:shots,name:$('a-name').value,brand:$('a-brand').value,price:$('a-price').value,cost:$('a-cost').value,gender:$('a-gender').value,
+    waterproof:wpSel,tech:techSel.slice(),weight:$('a-weight').value,tested:$('a-tested').checked,testedLink:(function(v){v=v.trim();return v&&!/^https?:/.test(v)?'https://'+v:v;})($('a-tlink').value),
     category:$('a-cat').value,sub:$('a-sub').value,size:$('a-size').value,condition:$('a-cond').querySelector('.on').textContent,description:$('a-desc').value,postToInstagram:$('a-ig').checked};
   var need=[[!shots.length,'shots','Add at least one photo.'],[!body.name.trim(),'a-name','Give it a name.'],[!parseInt(body.price,10),'a-price','Add the selling price.']];
   document.querySelectorAll('.miss').forEach(function(x){x.classList.remove('miss');});
@@ -305,7 +350,7 @@ $('a-go').onclick=function(){
     var ig=r.instagram==='posted'?' Posted to Instagram too.':r.instagram==='posted, and on Facebook'?' Posted to Instagram and Facebook too.':(r.instagram&&r.instagram!=='not requested'?' Instagram: '+r.instagram+'.':'');
     var okIg=!body.postToInstagram||/^posted/.test(r.instagram||'');
     say('a-msg','Live on the shop.'+ig,okIg?'good':'bad');say('a-top','Last piece: live on the shop.'+ig,okIg?'good':'bad');
-    shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc'].forEach(function(i){$(i).value='';});profitHint();fillSubs();loadBrands();window.scrollTo(0,0);
+    shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc','a-weight','a-tlink'].forEach(function(i){$(i).value='';});wpSel='';techSel=[];$('a-tested').checked=false;drawTech();profitHint();fillSubs();loadBrands();window.scrollTo(0,0);
   }).catch(function(e){say('a-msg',e.message,'bad');}).then(function(){btn.disabled=false;btn.textContent='Put it live';});
 };
 
@@ -450,6 +495,18 @@ function drawStats(){
   '<p class="dim" style="margin-top:20px">A sale counts once you tap "Payment received", or when you mark a piece as sold by hand. Shipping costs are not included.</p>';
 }
 
+// ----- guides -----
+var guideRows=[],gSlug='';
+$('openguides').onclick=function(){show('guides');};
+function loadGuides(){$('gedit').hidden=true;$('glist').hidden=false;api('guides').then(function(d){guideRows=d.guides;
+  $('glist').className='';$('glist').innerHTML='<button class="btn pop" data-g="" type="button" style="margin-top:0">Write a new guide</button>'+guideRows.map(function(g){return '<div class="box" style="margin-top:10px"><div class="tag">'+(g.published?'Published':'Draft')+'</div><div>'+esc(g.title)+'</div><div class="dim">'+esc(g.summary||'')+'</div><div class="acts"><button class="sm" data-g="'+esc(g.slug)+'">Edit</button>'+(g.published?'<a class="sm" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="/guides/'+esc(g.slug)+'" target="_blank" rel="noopener">View on site</a>':'')+'</div></div>';}).join('');
+ }).catch(function(e){$('glist').textContent=e.message;});}
+$('glist').onclick=function(e){var b=e.target.closest('[data-g]');if(!b)return;gSlug=b.getAttribute('data-g');var g=guideRows.filter(function(x){return x.slug===gSlug;})[0]||{};
+  $('g-title').value=g.title||'';$('g-sum').value=g.summary||'';$('g-body').value=g.body||'';$('g-pub').checked=!!g.published;$('g-del').hidden=!gSlug;say('g-msg','');$('glist').hidden=true;$('gedit').hidden=false;window.scrollTo(0,0);};
+$('g-back').onclick=loadGuides;
+$('g-save').onclick=function(){api('guide',{slug:gSlug,title:$('g-title').value,summary:$('g-sum').value,body:$('g-body').value,published:$('g-pub').checked}).then(function(r){gSlug=r.slug;$('g-del').hidden=false;say('g-msg',$('g-pub').checked?'Saved and live on the site.':'Saved as a draft.','good');}).catch(function(e){say('g-msg',e.message,'bad');});};
+$('g-del').onclick=function(){if(!gSlug||!confirm('Delete this guide for good?'))return;api('guide-delete',{slug:gSlug}).then(loadGuides).catch(function(e){say('g-msg',e.message,'bad');});};
+
 // ----- marketing plan -----
 var PLAN=[{"id": "p1", "name": "This week: get the basics right", "when": "Days 1 to 7", "goal": "A shop that looks real and can be found.", "tasks": [["p1a", "List at least 15 real pieces", "Me", ["Shoot each piece on the same backdrop, in daylight, no flash.", "Add stock: photos, brand, size, selling price and what you paid.", "Aim for a spread: jackets, a few boots, a pack, a tent.", "When 15 are up, open Stock and tap Hide sample pieces."]], ["p1b", "Fix the Instagram profile", "Partner", ["Bio link: mountainthrifters.com", "Bio text: Thrifted and new mountain gear from Manali. Shipped across India.", "Add the Shop now or Contact button (Edit profile, Action buttons).", "Pin 3 posts: best piece, how to order, a customer photo."]], ["p1c", "Set up WhatsApp Business", "Partner", ["Profile photo: the icon logo on dark.", "Description and About line (the wording we wrote).", "Quick replies: /price, /shipping, /howtoorder.", "Away message for night hours with the shop link."]], ["p1d", "Google Search Console", "Me", ["Go to search.google.com/search-console and add mountainthrifters.com.", "Verify it (ask Claude for the steps on that screen).", "Submit the sitemap: mountainthrifters.com/sitemap.xml", "Check back in a week for the first pages indexed."]], ["p1e", "Google Business Profile", "Partner", ["Go to google.com/business and create The Mountain Thrifters.", "Category: Outdoor clothing and equipment shop, or Thrift store.", "Add Manali address or service area, phone, website, hours.", "Upload 10 photos of stock and the logo."]], ["p1f", "Place a full test order", "Both", ["Order one piece from another phone.", "Check: WhatsApp message arrives, UPI opens, piece shows SOLD.", "In Orders tap Cancel and relist.", "Fix anything confusing before real customers arrive."]], ["p1g", "Choose the weekly drop day and time", "Both", ["Pick one slot and keep it, for example Friday 7 pm.", "Check Numbers, When customers buy, once there are orders, and move the slot if needed.", "Add it to the Instagram bio: New drop every Friday 7 pm."]], ["p1h", "Start the WhatsApp broadcast list", "Partner", ["Message past buyers: Want first look at new drops? Reply YES.", "Add everyone who says yes to a broadcast list called Drops.", "Goal for month one: 100 people."]]], "how": "Nothing else works until this does. Posters, Reels and search all send people to the shop and the Instagram profile. If those look empty or unfinished, people leave. This week makes sure that whoever arrives finds real stock, a clear way to order, and a business that shows up on Google and Maps."}, {"id": "p2", "name": "Week 2: own Manali", "when": "Days 8 to 14", "goal": "Be seen wherever a traveller who under-packed is likely to look.", "tasks": [["p2a", "Make and print the QR poster", "Me", ["A5 size, dark background, logo, one line: Forgot your jacket? Thrifted mountain gear, delivered to your hostel today.", "QR code pointing to mountainthrifters.com (ask Claude to make the poster).", "Add the WhatsApp number.", "Print 20 copies."]], ["p2b", "Put posters in 10 hostels and cafes", "Partner", ["Old Manali, Vashisht, Mall Road. Ask the owner first.", "Offer the staff a discount code as a thank you.", "Write each place in the note on this task so you can check back.", "Take a photo of each poster in place for Stories."]], ["p2c", "Talk to 5 trek operators and rental shops", "Partner", ["Offer: a code for their groups, and a cut for every order that uses it.", "Ask what their customers most often forget to bring.", "Leave posters or cards with them.", "Note who said yes."]], ["p2d", "Offer same-day delivery in Manali", "Both", ["Decide the area and the cut-off time, for example orders before 4 pm.", "Decide the fee, or make it free above a set order value.", "Add it to the Instagram bio, the poster and WhatsApp quick replies."]], ["p2e", "Collect 5 Google reviews", "Partner", ["Send past buyers the review link from your Google Business Profile.", "Ask for a photo of them wearing the piece.", "Reply to every review."]], ["p2f", "List the business on Google Maps and tag it everywhere", "Partner", ["Finish the Google Business Profile from stage one, with Manali as the location.", "Ask the first 5 local customers to add a review that mentions what they bought.", "Tag the Manali location on every Instagram post and Story, so you appear when people browse the Manali location page.", "Use local hashtags on Reels: #manali #oldmanali #manalitrip #kasol."]], ["p2g", "Get into hostel and traveller WhatsApp groups", "Partner", ["Ask hostel managers if they run a guest group or notice board group.", "Ask them to share one message: Need a jacket or boots? The Mountain Thrifters delivers to the hostel today, plus the link.", "Offer the manager a standing discount in return.", "Note which hostels agreed."]], ["p2h", "Put table cards in 5 cafes", "Partner", ["Small card with the QR code, one line and the WhatsApp number.", "Pick cafes where travellers sit for hours: Old Manali and Vashisht.", "Offer the cafe owner a discount code for staff.", "Check back weekly and replace missing cards."]], ["p2i", "Reach people before they arrive", "Me", ["Ask 3 trek operators to add one line to their pre-trip packing message: Forgot something? Get it in Manali from The Mountain Thrifters.", "Post a Reel: 5 things people forget to pack for Manali.", "Answer Manali packing questions in travel groups, with the shop link at the end."]], ["p2j", "Cover the arrival points", "Partner", ["Ask 2 or 3 taxi drivers and a hotel reception or two to keep a few cards.", "Offer them a small cut per order that names them.", "Ask customers How did you hear about us? and write the answers in the note on this task.", "After two weeks, put more effort into whichever source comes up most."]]], "how": "A traveller who needs a jacket decides in a few places: where they sleep, where they eat, who runs their trek, and what they search on their phone. You cannot reach every traveller, but you can be visible in each of those four places. A poster where they sleep and eat, a word from the trek operator, and a Google Maps listing for when they search. Ten posters is the start. The aim is that anyone who under-packed and is staying in Old Manali or Vashisht sees your name at least twice in a day."}, {"id": "p3", "name": "Weeks 3 and 4: the Instagram engine", "when": "Days 15 to 30", "goal": "A repeatable weekly rhythm that sells stock.", "tasks": [["p3a", "Run the first proper drop", "Both", ["Thursday: Stories teasing 3 pieces, with the time of the drop.", "Friday at the set time: add stock with Also post to Instagram on.", "Send the broadcast message one minute after.", "Within the hour: post SOLD screenshots to Stories."]], ["p3b", "Film 4 Reels", "Me", ["Full trek outfit for Rs 2,000.", "What Rs 5,000 gets you thrifted versus new.", "Before and after: cleaning and repairing a jacket.", "Packing an order in Manali, with the mountains behind."]], ["p3c", "Launch the customer photo offer", "Partner", ["Offer: tag us in the piece on a trek, get Rs 100 off the next order.", "Put a card about it in every parcel.", "Repost every tag to Stories and save to a highlight."]], ["p3d", "Build Story highlights", "Me", ["How to order.", "Reviews.", "Sold.", "Sell to us."]], ["p3e", "Message 10 small travel and thrift creators", "Me", ["Look for 5,000 to 50,000 followers who trek or thrift in India.", "Offer one piece in exchange for one Reel that tags the shop.", "Keep a list of who replied in the note on this task."]], ["p3f", "Start the referral offer", "Both", ["Rs 150 off for the buyer and for the friend they send.", "Track it by asking Who sent you? on WhatsApp when confirming.", "Announce it in Stories and the broadcast list."]]], "how": "Instagram shows your posts to more people when the same people keep coming back and reacting quickly. A fixed weekly drop trains followers to show up at one time, which creates that burst. SOLD screenshots prove pieces go fast, so people act sooner next time. Reels are how people who do not follow you find you. Customer photos and small creators are other people vouching for you, which is trusted more than your own posts."}, {"id": "p4", "name": "Month 2: reach the rest of India", "when": "Days 31 to 60", "goal": "Orders from people who have never been to Manali.", "tasks": [["p4a", "Be useful in 3 trekking communities", "Me", ["Pick 3: a trekking Facebook group, a Reddit community, a trek forum.", "Post a real packing list for one popular trek, with prices.", "Mention the shop once, at the end. No hard selling.", "Answer questions for a week."]], ["p4b", "Contact 5 college outdoor clubs", "Me", ["Delhi, Chandigarh, Pune, Bangalore.", "Offer a club code before their trip season.", "Ask them to share the drop time in their group chat."]], ["p4c", "Publish the first buying guide", "Me", ["Topic: What to wear in Manali in winter, or a trek packing list under Rs 5,000.", "Ask Claude to write it and add it to the site.", "Share it in Stories and in the communities above."]], ["p4d", "Run a seasonal push", "Both", ["October to February: jackets, puffers, snow gear.", "April to June: trek boots, packs, tents.", "Stock up on that category two weeks before and theme the drops."]], ["p4e", "Add card and UPI checkout", "Partner", ["Sign up for a payment gateway with PAN and bank details.", "Give Claude the returns and shipping rules for the policy pages.", "Add the two keys in Cloudflare when approved."]], ["p4f", "Review the numbers and adjust", "Both", ["Open Numbers, set to 30 days.", "Which category and brand made the most profit? Buy more of that.", "What has sat unsold over 30 days? Cut the price or bundle it.", "Move the drop time to when most orders come in."]]], "how": "People outside Manali will not walk past a poster, so they have to find you where they already plan trips: trekking groups, college clubs and Google. Being helpful there, with packing lists and guides, earns clicks that an advert would not. Card and UPI checkout matters here because strangers in other cities trust a proper payment page more than sending UPI to a number."}],ROUTINE=[["r1", "Monday", "Check Numbers. Note the best category and brand."], ["r2", "Tuesday and Wednesday", "Source and photograph new stock."], ["r3", "Thursday", "Tease the drop in Stories. Line up the broadcast message."], ["r4", "Friday", "Drop at the set time. Post SOLD screenshots."], ["r5", "Saturday", "Reply to every message and comment. Repost customer photos."], ["r6", "Sunday", "Plan next week's Reel. Reply to reviews."]],GOALS=[["15 real pieces listed", "Stage one, first task. Three or four pieces a day for a week gets you there."], ["10 posters up around Manali", "Stage two: the poster, hostel and cafe tasks."], ["100 people on the WhatsApp drops list", "Ask every past buyer, add a Join the drops list line to your Instagram bio and Stories, and ask each new customer when you confirm their order."], ["5 Google reviews", "Send the review link to happy customers the day their parcel arrives."], ["20 orders", "This is the result of the rest: stock listed, posters up, a weekly drop and the broadcast list. If orders lag, check Numbers to see which of those is weakest."]],plan={state:{},custom:[]},openPhase=null;
 function weekKey(){var d=new Date(Date.now()+330*60000);var day=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-day);return d.toISOString().slice(0,10);}
@@ -496,6 +553,7 @@ $('plan').onclick=function(e){
 };
 $('plan').addEventListener('change',function(e){var id=e.target.getAttribute&&e.target.getAttribute('data-note');if(id)api('plan',{set:{id:id,note:e.target.value}}).then(function(d){plan=d;}).catch(function(){});});
 
+drawTech();
 drawShots();
 loadConfig().catch(function(){});
 if(KEY)api('orders').then(function(){show('add');loadBrands();igState();}).catch(function(){show('');});else show('');
