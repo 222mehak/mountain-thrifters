@@ -76,7 +76,7 @@ async function igAuth(env) {
   }
   const pages = await (await fetch(FB + '/me/accounts?fields=name,access_token,instagram_business_account&limit=50&access_token=' + encodeURIComponent(token))).json();
   let found = (pages.data || []).find((pg) => pg.instagram_business_account);
-  let auth = found ? { token: found.access_token, id: found.instagram_business_account.id } : null;
+  let auth = found ? { token: found.access_token, id: found.instagram_business_account.id, pageId: found.id } : null;
   if (!auth) {
     const me = await (await fetch(FB + '/me?fields=instagram_business_account&access_token=' + encodeURIComponent(token))).json();
     if (me.instagram_business_account) auth = { token, id: me.instagram_business_account.id };
@@ -260,7 +260,17 @@ async function igPublish(request, env, product) {
     pub.searchParams.set('creation_id', a.id);
     pub.searchParams.set('access_token', token);
     const b = await (await fetch(pub, { method: 'POST' })).json();
-    return b.id ? 'posted' : 'failed: ' + ((b.error && b.error.message) || 'Instagram did not publish the post');
+    if (!b.id) return 'failed: ' + ((b.error && b.error.message) || 'Instagram did not publish the post');
+    // Same photo and caption to the linked Facebook Page, when the token allows it.
+    if (auth.pageId) {
+      const fb = new URL(FB + '/' + auth.pageId + '/photos');
+      fb.searchParams.set('url', origin + product.photo);
+      fb.searchParams.set('caption', caption);
+      fb.searchParams.set('access_token', token);
+      const c = await (await fetch(fb, { method: 'POST' })).json().catch(() => ({}));
+      return c.id ? 'posted, and on Facebook' : 'posted (Facebook Page: ' + ((c.error && c.error.message) || 'not posted') + ')';
+    }
+    return 'posted';
   } catch (e) { return 'failed: could not reach Instagram'; }
 }
 

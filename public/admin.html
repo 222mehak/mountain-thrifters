@@ -282,7 +282,7 @@ $('a-go').onclick=function(){
   for(var i=0;i<need.length;i++)if(need[i][0]){var el=$(need[i][1]);el.classList.add('miss');el.scrollIntoView({block:'center'});say('a-msg',need[i][2],'bad');return;}
   btn.disabled=true;btn.textContent='Uploading…';say('a-msg','');
   api('product',body).then(function(r){
-    var ig=r.instagram==='posted'?' Posted to Instagram too.':(r.instagram&&r.instagram!=='not requested'?' Instagram: '+r.instagram+'.':'');
+    var ig=r.instagram==='posted'?' Posted to Instagram too.':r.instagram==='posted, and on Facebook'?' Posted to Instagram and Facebook too.':(r.instagram&&r.instagram!=='not requested'?' Instagram: '+r.instagram+'.':'');
     say('a-msg','Live on the shop.'+ig,'good');
     shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc'].forEach(function(i){$(i).value='';});profitHint();fillSubs();loadBrands();window.scrollTo(0,0);
   }).catch(function(e){say('a-msg',e.message,'bad');}).then(function(){btn.disabled=false;btn.textContent='Put it live';});
