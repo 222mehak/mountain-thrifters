@@ -149,6 +149,10 @@ dl.facts dd{margin:0;text-align:right}
 .back{display:inline-block;margin-bottom:24px;font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-decoration:none;padding:10px 0}
 .back:hover{color:var(--ink)}
 
+.kit{padding:72px 0 0}
+.kitc{display:flex;flex-direction:column;gap:8px;min-width:0}
+.kitc .card{flex:1}
+.kitc .why{font-size:13px;color:var(--mute);min-height:2.6em;display:flex;align-items:flex-end}
 .narrow{max-width:640px}
 .shots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .shots>*{aspect-ratio:1;background:var(--s2);position:relative;overflow:hidden}
@@ -354,6 +358,52 @@ function shop(keepOpen){
   '<div class="results">'+(list.length?'<div class="grid three">'+list.map(card).join('')+'</div>':'<div class="empty">Nothing matches those filters right now. New pieces land every week.</div>')+'</div></div></div>';
 }
 
+// ----- kit suggestions -----
+// Works out what each piece is for (outer layer, warm layer, legs, feet and so on) from its
+// category and type, then suggests in-stock pieces that complete the kit: a different job,
+// a size that fits with it, the same wearer, and a similar price range.
+var ROLE_RULES=[['shell',/shell|rain|wind|hardshell|jacket/],['insul',/puffer|down|fleece|mid|sweater|hood/],['base',/base|thermal/],['legs',/pant|trouser|bib|short/],
+  ['feet',/boot|shoe|footwear|sock|gaiter|sandal/],['hands',/glove|mitt/],['head',/beanie|cap|hat/],['eyes',/goggle|sunglass/],['neck',/neck|buff|scarf/],
+  ['pack',/pack|bag|duffel|cover/],['sleep',/tent|sleeping|mat|stove|cook|camp/],['trek',/pole|headlamp|bottle|flask|spike|essential/]];
+function roleOf(p){var a=((p.sub||'')+' ').toLowerCase(),b=((p.category||'')+' '+(p.name||'')).toLowerCase();
+  if(/sleeping bag/.test(a+b))return 'sleep';
+  for(var i=0;i<ROLE_RULES.length;i++)if(ROLE_RULES[i][1].test(a))return ROLE_RULES[i][0];
+  for(var j=0;j<ROLE_RULES.length;j++)if(ROLE_RULES[j][1].test(b))return ROLE_RULES[j][0];
+  return '';}
+var WANTS={shell:['insul','legs','feet','hands','head','pack'],insul:['shell','legs','feet','head','hands'],base:['insul','shell','legs','feet'],legs:['shell','insul','feet','hands'],
+  feet:['legs','pack','trek','shell'],hands:['shell','insul','head','neck'],head:['shell','insul','hands','eyes'],eyes:['head','shell','hands'],neck:['shell','head','hands'],
+  pack:['trek','feet','shell','sleep'],sleep:['sleep','pack','trek','insul'],trek:['pack','feet','sleep','shell']};
+var WHY={shell:'Outer layer to block wind and snow',insul:'A warm mid-layer',base:'Base layer next to skin',legs:'For your legs',feet:'For your feet',hands:'For your hands',head:'Keeps your head warm',
+  eyes:'For the snow glare',neck:'For the wind',pack:'To carry it all',sleep:'For the campsite',trek:'Handy on the trail'};
+var SIZES=['XS','S','M','L','XL','XXL'],WORN={shell:1,insul:1,base:1,legs:1};
+function kitScore(a,c,ra,rc){
+  if(a.gender&&c.gender&&a.gender!=='Everyone'&&c.gender!=='Everyone'&&a.gender!==c.gender)return -99;
+  var sc=0,ia=SIZES.indexOf(String(a.size||'').toUpperCase()),ic=SIZES.indexOf(String(c.size||'').toUpperCase());
+  if(WORN[ra]&&WORN[rc]&&ia>-1&&ic>-1){var gap=Math.abs(ia-ic);if(gap>1)return -99;sc+=gap===0?3:1;}
+  if(a.brand&&c.brand===a.brand)sc+=1;
+  var ratio=Number(c.price)/Math.max(1,Number(a.price));if(ratio>0.3&&ratio<1.7)sc+=1;
+  if(c.tested)sc+=0.5;if(c.photo)sc+=0.5;
+  return sc;}
+function kitFor(anchors,limit){
+  var have={},skip={},picks=[];anchors.forEach(function(a){have[roleOf(a)]=1;skip[a.id]=1;});
+  var wants=[];anchors.forEach(function(a){(WANTS[roleOf(a)]||['shell','insul','feet','pack']).forEach(function(r){if(wants.indexOf(r)<0)wants.push(r);});});
+  var a0=anchors[0],ra=roleOf(a0),pool=S.products.filter(function(c){return !c.sold&&!skip[c.id];});
+  wants.forEach(function(r){
+    if(picks.length>=limit)return;
+    if(have[r]&&r!=='sleep')return;
+    var best=null,bs=-50;
+    pool.forEach(function(c){if(roleOf(c)!==r||skip[c.id])return;if(r==='sleep'&&anchors.some(function(a){return a.sub&&a.sub===c.sub;}))return;
+      var sc=kitScore(a0,c,ra,r);if(sc>bs){bs=sc;best=c;}});
+    if(best&&bs>-50){picks.push({p:best,why:(r==='insul'&&ra==='shell'&&anchors.length===1)?'Warm layer to wear under it':WHY[r]});skip[best.id]=1;have[r]=1;}
+  });
+  return picks;}
+function kitHtml(anchors,title,intro,limit){
+  var picks=kitFor(anchors,limit);if(!picks.length)return '';
+  var total=picks.reduce(function(t,k){return t+Number(k.p.price||0);},0),ids=picks.map(function(k){return k.p.id;}).join(',');
+  return '<section class="kit"><div class="shead"><div><div class="eye">'+esc(intro)+'</div><h2 style="margin-top:10px">'+esc(title)+'</h2></div>'+
+    (picks.length>1?'<button class="btn ghost" type="button" data-kit="'+esc(ids)+'">Add all '+picks.length+' to bag · '+rs(total)+'</button>':'')+'</div>'+
+    '<div class="grid">'+picks.map(function(k){return '<div class="kitc"><div class="why">'+esc(k.why)+'</div>'+card(k.p)+'<button class="btn ghost wide" type="button" data-kit="'+esc(k.p.id)+'">Add to bag</button></div>';}).join('')+'</div></section>';}
+
 // ----- one piece -----
 function product(id){
   var p=S.products.filter(function(x){return x.id===id;})[0];
@@ -371,6 +421,7 @@ function product(id){
     :inBag?'<a class="btn wide pop" href="/checkout" data-link>Buy now</a><a class="btn wide ghost" style="margin-top:10px" href="/bag" data-link>In your bag. View bag</a>'
     :'<button class="btn wide pop" type="button" data-buy="'+esc(p.id)+'">Buy now</button><button class="btn wide ghost" style="margin-top:10px" type="button" data-add="'+esc(p.id)+'">Add to bag</button>')+
   '<p class="dim" style="font-size:14px">One of one. Thrifted, checked by hand and shipped from Manali across India.'+(p.link?' <a href="'+esc(p.link)+'" target="_blank" rel="noopener">See it on Instagram.</a>':'')+'</p></div></div></div>';
+  if(!p.sold){var kh=kitHtml([p],'Build the kit','Goes with this',4);if(kh)app.querySelector('.wrap').insertAdjacentHTML('beforeend',kh);}
 }
 
 // ----- bag and checkout -----
@@ -382,6 +433,7 @@ function bagView(){
   app.innerHTML='<div class="wrap page"><div class="narrow"><h1>Your bag</h1><div style="margin-top:24px">'+items.map(function(p){
     return '<div class="item">'+pic(p)+'<div class="g"><div>'+esc((p.brand?p.brand+' ':'')+p.name)+'</div><div class="dim" style="font-size:14px">'+meta(p)+'</div><button type="button" data-remove="'+esc(p.id)+'">Remove</button></div><div>'+rs(p.price)+'</div></div>';
   }).join('')+'</div><div class="total"><span>Total</span><span>'+rs(sum(items))+'</span></div><a class="btn wide" href="/checkout" data-link>Checkout</a><p class="dim" style="font-size:14px">Pay by UPI. We confirm on WhatsApp and ship from Manali.</p></div></div>';
+  var bk=kitHtml(items,'Finish the kit','Goes with your bag',3);if(bk)app.querySelector('.wrap').insertAdjacentHTML('beforeend',bk);
 }
 function checkout(msg){
   var items=bagItems();
@@ -511,6 +563,7 @@ function go(url,replace){history[replace?'replaceState':'pushState'](null,'',url
 window.addEventListener('popstate',render);
 document.addEventListener('click',function(e){
   var sx=e.target.closest('[data-sx]');if(sx){sellShots.splice(Number(sx.getAttribute('data-sx')),1);drawSellShots();return;}
+  var kb=e.target.closest('[data-kit]');if(kb){var kids=bag();kb.getAttribute('data-kit').split(',').forEach(function(i){if(kids.indexOf(i)<0)kids.push(i);});setBag(kids);if(location.pathname==='/bag')bagView();else go('/bag');return;}
   var t=e.target.closest('[data-link],[data-f],[data-clear],[data-buy],[data-add],[data-remove],[data-pic],[data-igmore]');
   if(!t)return;
   if(t.hasAttribute('data-link')){if(e.metaKey||e.ctrlKey||e.shiftKey)return;e.preventDefault();go(t.getAttribute('href'));return;}
