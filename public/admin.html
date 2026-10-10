@@ -18,7 +18,7 @@
 <style>
 :root{--bg:#111312;--ink:#EDEBE4;--mute:#A9ADA6;--dim:#8E938C;--pop:#E8623A;--s1:#181B19;--s2:#222623;--line:#262A27;--edge:#3A3F3B;--good:#7FD6A0;--bad:#FF9B7A}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,sans-serif;font-size:16px;line-height:1.5;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,sans-serif;font-size:16px;line-height:1.5;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 button,input,textarea,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--pop);outline-offset:2px}
 main{max-width:640px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px 24px}
@@ -72,7 +72,19 @@ th:first-child,td:first-child{text-align:left}
 .pick button{flex:none}
 .pick button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--edge);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
-nav button{flex:1;min-width:0;padding:0;min-height:60px;background:none;border:0;font-size:9.5px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:var(--dim);cursor:pointer}
+nav button{flex:1;min-width:0;padding:6px 0 4px;min-height:64px;background:none;border:0;font-size:12px;font-weight:500;color:var(--mute);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
+nav button i{position:absolute;top:6px;left:50%;margin-left:6px;min-width:18px;height:18px;border-radius:9px;background:var(--pop);color:var(--bg);font-size:11px;font-weight:600;font-style:normal;line-height:18px;padding:0 4px}
+h1:focus{outline:none}
+.backbar{display:inline-flex;align-items:center;gap:6px;min-height:44px;background:none;border:0;color:var(--mute);font-size:15px;cursor:pointer;padding:0;margin-bottom:6px}
+.tile{display:block;width:100%;text-align:left;background:var(--s1);border:0;padding:16px;cursor:pointer;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:16px}
+.tile b{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:30px;line-height:1;min-width:1.4em}
+.tile.hot{border-left:3px solid var(--pop)}
+.tile .go{color:var(--dim);font-size:20px}
+.tile small{display:block;color:var(--dim);font-size:13px;margin-top:2px}
+.grp{font-size:11px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--pop);margin:26px 0 8px}
+.sub3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:18px}
+.sub3 button{min-height:48px;background:transparent;border:1px solid var(--edge);cursor:pointer;font-size:14px;padding:0 4px}
+.sub3 button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 nav button.on{color:var(--pop)}
 .stp{display:flex;align-items:center;gap:10px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:22px;text-transform:uppercase;line-height:1;margin:30px 0 4px;padding-top:20px;border-top:1px solid var(--line)}
 .stp b{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--pop);color:var(--bg);font-size:17px}
@@ -105,6 +117,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 </head>
 <body>
 <main>
+<button class="backbar" id="backbar" type="button" hidden><span aria-hidden="true">‹</span> Back to More</button>
 
 <section id="login" hidden>
 <h1>Owner sign in</h1>
@@ -114,6 +127,32 @@ details.ph>summary::-webkit-details-marker{display:none}
 <p class="msg bad" id="loginmsg" role="alert"></p>
 <h2>Put this on your phone</h2>
 <p class="mute">iPhone: tap Share, then "Add to Home Screen".<br>Android: tap the three dots, then "Add to Home screen" or "Install app".</p>
+</section>
+
+<section id="t-home" hidden>
+<h1>Today</h1>
+<div id="home" class="mute">Loading…</div>
+</section>
+
+<section id="t-more" hidden>
+<h1>More</h1>
+<div class="grp">Grow the shop</div>
+<button class="tile" data-go="plan"><span>Marketing plan<small>The step-by-step checklist</small></span><span class="go">›</span></button>
+<a class="tile" href="/launch.html" style="text-decoration:none;color:inherit"><span>Launch planner<small>Countdown, tasks and ready-made captions</small></span><span class="go">›</span></a>
+<button class="tile" data-go="alerts"><span>Drop alerts list<small>People who signed up for drop messages</small></span><span class="go">›</span></button>
+<button class="tile" data-go="guides"><span>Guides<small>Write and publish articles</small></span><span class="go">›</span></button>
+<div class="grp">Know your numbers</div>
+<button class="tile" data-go="stats"><span>Numbers<small>Revenue, profit, what sells and when</small></span><span class="go">›</span></button>
+<div class="grp">Shop setup</div>
+<button class="tile" data-go="cats"><span>Categories<small>Add, rename or delete</small></span><span class="go">›</span></button>
+<button class="tile" data-go="settings"><span>Line at the top of the shop<small>The drop announcement</small></span><span class="go">›</span></button>
+<a class="tile" href="/" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><span>View the shop<small>Opens the public site</small></span><span class="go">›</span></a>
+<button class="tile" id="signout"><span>Sign out on this device</span><span class="go">›</span></button>
+</section>
+
+<section id="t-settings" hidden>
+<h1>Top line</h1>
+<div class="box"><label for="bn" style="margin-top:0">Line across the top of the shop</label><input id="bn" maxlength="140"><p class="dim" style="margin:6px 0 0">"Sign up for alerts" is added after it and opens WhatsApp. Leave it empty to hide the line.</p><div class="acts"><button class="sm pop" id="bnsave" type="button">Save</button><span class="dim" id="bnmsg" role="status" style="align-self:center"></span></div></div>
 </section>
 
 <section id="t-add" hidden>
@@ -160,11 +199,9 @@ details.ph>summary::-webkit-details-marker{display:none}
 <p class="msg" id="a-msg" role="status"></p>
 </section>
 
-<section id="t-orders" hidden><h1>Orders</h1>
-<button class="btn" id="openreqs" type="button" style="margin:0 0 10px;background:transparent;color:var(--ink);border-color:var(--edge)">Gear customers are asking for</button>
-<button class="btn" id="openoffers" type="button" style="margin:0 0 16px;background:transparent;color:var(--ink);border-color:var(--edge)">Gear people want to sell us</button><div id="orders" class="mute">Loading…</div></section>
+<section id="t-orders" hidden><h1>Inbox</h1><div class="sub3" data-sub="orders"></div><div id="orders" class="mute">Loading…</div></section>
 <section id="t-stock" hidden><h1>Stock</h1>
-<div class="box"><label for="bn" style="margin-top:0">Line across the top of the shop</label><input id="bn" maxlength="140"><p class="dim" style="margin:6px 0 0">"Sign up for alerts" is added after it and opens WhatsApp. Leave it empty to hide the line.</p><div class="acts"><button class="sm pop" id="bnsave" type="button">Save</button><span class="dim" id="bnmsg" role="status" style="align-self:center"></span></div></div><div id="stock" class="mute">Loading…</div></section>
+<div id="stock" class="mute">Loading…</div></section>
 
 <section id="t-cats" hidden>
 <h1>Categories</h1>
@@ -182,19 +219,17 @@ details.ph>summary::-webkit-details-marker{display:none}
 <section id="t-plan" hidden>
 <h1>Marketing plan</h1>
 <a class="btn pop" href="/launch.html" style="text-decoration:none;margin:0 0 10px">Open the launch planner</a>
-<button class="btn" id="openalerts" type="button" style="margin:0 0 10px;background:transparent;color:var(--ink);border-color:var(--edge)">Drop alerts list</button>
-<button class="btn" id="openguides" type="button" style="margin:0 0 18px;background:transparent;color:var(--ink);border-color:var(--edge)">Write and manage guides</button>
 <div id="plan" class="mute">Loading…</div>
 </section>
 
 <section id="t-reqs" hidden>
-<h1>Gear customers want</h1>
+<h1>Inbox</h1><div class="sub3" data-sub="reqs"></div>
 <p class="mute" style="margin-top:0">What people asked you to find, from sold pieces and the request page. Use it as your sourcing list.</p>
 <div id="rlist" class="mute">Loading…</div>
 </section>
 
 <section id="t-offers" hidden>
-<h1>Gear offered to us</h1>
+<h1>Inbox</h1><div class="sub3" data-sub="offers"></div>
 <p class="mute" style="margin-top:0">Sent through the Sell with us page, with photos. Tap a photo to see it full size.</p>
 <div id="olist" class="mute">Loading…</div>
 </section>
@@ -223,7 +258,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 
 </main>
 <nav id="tabs" hidden>
-<button data-t="add">Add</button><button data-t="orders">Orders</button><button data-t="stock">Stock</button><button data-t="cats">Categories</button><button data-t="stats">Numbers</button><button data-t="plan">Plan</button>
+<button data-t="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.700" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg><span>Home</span></button><button data-t="add"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.700" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Add</span></button><button data-t="orders"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.700" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg><span>Inbox</span><i id="nb-orders" hidden></i></button><button data-t="stock"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.700" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4a2 2 0 0 1 2 2c0 1.500-2 1.500-2 3.500"/><path d="M12 9.500L3 17h18z"/></svg><span>Stock</span></button><button data-t="more"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.700" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.500"/><circle cx="12" cy="12" r="1.500"/><circle cx="19" cy="12" r="1.500"/></svg><span>More</span></button>
 </nav>
 
 <script>
@@ -240,11 +275,18 @@ function api(path,body){
   return fetch('/api/admin/'+path,o).then(function(r){return r.json().then(function(j){if(r.status===403){signOut();throw new Error('Wrong admin key.');}if(!r.ok)throw new Error(j.message||'That did not work. Try again.');return j;});});
 }
 function signOut(){try{localStorage.removeItem('mt_admin_key');}catch(e){}KEY='';show('');}
+var ALL=['home','add','orders','stock','more','cats','stats','plan','guides','alerts','offers','reqs','settings'];
+var PARENT={offers:'orders',reqs:'orders',cats:'more',stats:'more',plan:'more',guides:'more',alerts:'more',settings:'more'};
+var counts={orders:0,offers:0,reqs:0};
 function show(tab){
   $('login').hidden=!!KEY;$('tabs').hidden=!KEY;
-  ['add','orders','stock','cats','stats','plan','guides','alerts','offers','reqs'].forEach(function(t){$('t-'+t).hidden=!KEY||t!==tab;});
-  document.querySelectorAll('nav button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===tab);});
+  ALL.forEach(function(t){$('t-'+t).hidden=!KEY||t!==tab;});
+  var top=PARENT[tab]||tab;
+  document.querySelectorAll('nav button').forEach(function(b){var on=b.getAttribute('data-t')===top;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+  $('backbar').hidden=!KEY||PARENT[tab]!=='more';
   if(!KEY)return;
+  if(top==='orders')drawSub(tab);
+  if(tab==='home')loadHome();
   if(tab==='orders')loadOrders();
   if(tab==='stock')loadStock();
   if(tab==='cats')drawCats();
@@ -255,12 +297,41 @@ function show(tab){
   if(tab==='offers')loadOffers();
   if(tab==='reqs')loadReqs();
   window.scrollTo(0,0);
+  var h=$('t-'+tab).querySelector('h1');if(h){h.setAttribute('tabindex','-1');h.focus({preventScroll:true});}
+}
+function drawSub(tab){document.querySelectorAll('.sub3').forEach(function(el){
+  el.innerHTML=[['orders','Orders'],['offers','Selling to us'],['reqs','Requests']].map(function(x){return '<button type="button" data-go="'+x[0]+'" class="'+(x[0]===tab?'on':'')+'" aria-pressed="'+(x[0]===tab)+'">'+x[1]+(counts[x[0]]?' ('+counts[x[0]]+')':'')+'</button>';}).join('');});}
+function badge(){var n=counts.orders+counts.offers+counts.reqs,el=$('nb-orders');el.hidden=!n;el.textContent=n;}
+document.addEventListener('click',function(e){var g=e.target.closest('[data-go]');if(g)show(g.getAttribute('data-go'));});
+$('backbar').onclick=function(){show('more');};
+$('signout').onclick=function(){if(confirm('Sign out of the owner app on this device?'))signOut();};
+// ----- home: what needs doing today -----
+function loadHome(){
+  Promise.all([api('orders'),api('offers'),api('requests'),api('alerts'),api('products')]).then(function(r){
+    var o=r[0].orders,pay=o.filter(function(x){return x.status==='awaiting payment';}),ship=o.filter(function(x){return x.status==='paid';});
+    var off=r[1].offers.filter(function(x){return x.status==='new';}),rq=r[2].requests.filter(function(x){return x.status==='open';});
+    var live=r[4].products.filter(function(p){return !p.sold&&!p.sample;}),week=r[3].people.filter(function(p){return Date.now()-new Date(p.at)<7*864e5;}).length;
+    counts={orders:pay.length+ship.length,offers:off.length,reqs:rq.length};badge();
+    var t=function(n,label,sub,go,hot){return '<button class="tile'+(hot&&n?' hot':'')+'" data-go="'+go+'"><span style="display:flex;align-items:center;gap:14px"><b>'+n+'</b><span>'+label+(sub?'<small>'+sub+'</small>':'')+'</span></span><span class="go">›</span></button>';};
+    var todo=pay.length+ship.length+off.length+rq.length;
+    $('home').className='';
+    $('home').innerHTML='<p class="mute" style="margin-top:0">'+(todo?'These need you:':'Nothing is waiting on you right now.')+'</p>'+
+      t(pay.length,'Orders waiting for payment','Check your UPI, then tap Payment received','orders',1)+
+      t(ship.length,'Orders to ship','Paid and ready to pack','orders',1)+
+      t(off.length,'New gear offered to you','People who want to sell, with photos','offers',1)+
+      t(rq.length,'Open requests','Gear customers asked you to find','reqs',1)+
+      '<div class="grp">The shop</div>'+
+      t(live.length,'Pieces on sale',r[4].products.some(function(p){return p.sample;})?'Sample pieces are still showing':'','stock',0)+
+      t(r[3].people.length,'On the drop alerts list',week?week+' joined this week':'','alerts',0)+
+      '<div class="grp">Quick actions</div><button class="btn pop" data-go="add" style="margin-top:0">Add a new piece</button>'+
+      '<div class="box" style="margin-top:10px"><div class="fl" style="margin-top:0">Top of the shop says</div><div>'+esc($('bn').value||'Nothing right now')+'</div><div class="acts"><button class="sm" data-go="settings">Change it</button></div></div>';
+  }).catch(function(e){$('home').textContent=e.message;});
 }
 function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();$('bn').value=c.notice||'';});}
 $('bnsave').onclick=function(){api('banner',{text:$('bn').value}).then(function(){$('bnmsg').textContent='Saved.';}).catch(function(e){$('bnmsg').textContent=e.message;});};
 $('signin').onclick=function(){
   KEY=$('key').value.trim();
-  api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('add');loadBrands();igState();}).catch(function(e){$('loginmsg').textContent=e.message;});
+  api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('home');loadBrands();igState();}).catch(function(e){$('loginmsg').textContent=e.message;});
 };
 $('tabs').onclick=function(e){var b=e.target.closest('button');if(b)show(b.getAttribute('data-t'));};
 
@@ -520,7 +591,7 @@ function drawStats(){
 }
 
 // ----- gear customers are asking for -----
-$('openreqs').onclick=function(){show('reqs');};
+
 function loadReqs(){api('requests').then(function(d){
   var open=d.requests.filter(function(r){return r.status==='open';}),tally={};
   open.forEach(function(r){var k=r.like?(r.like.sub||r.like.category||r.like.name):'Described by the customer';tally[k]=(tally[k]||0)+1;});
@@ -541,7 +612,7 @@ $('rlist').onclick=function(e){var b=e.target.closest('button');if(!b)return;
 };
 
 // ----- gear offered for sale -----
-$('openoffers').onclick=function(){show('offers');};
+
 function loadOffers(){api('offers').then(function(d){
   $('olist').className='';
   $('olist').innerHTML=d.offers.length?d.offers.map(function(o){
@@ -559,7 +630,7 @@ $('olist').onclick=function(e){var b=e.target.closest('button');if(!b)return;
 
 // ----- drop alerts list -----
 var people=[];
-$('openalerts').onclick=function(){show('alerts');};
+
 function loadAlerts(){api('alerts').then(function(d){people=d.people;
   var week=people.filter(function(p){return Date.now()-new Date(p.at)<7*864e5;}).length;
   $('alist').className='';
@@ -578,7 +649,7 @@ $('alist').onclick=function(e){var b=e.target.closest('button');if(!b)return;
 
 // ----- guides -----
 var guideRows=[],gSlug='';
-$('openguides').onclick=function(){show('guides');};
+
 function loadGuides(){$('gedit').hidden=true;$('glist').hidden=false;api('guides').then(function(d){guideRows=d.guides;
   $('glist').className='';$('glist').innerHTML='<button class="btn pop" data-g="" type="button" style="margin-top:0">Write a new guide</button>'+guideRows.map(function(g){return '<div class="box" style="margin-top:10px"><div class="tag">'+(g.published?'Published':'Draft')+'</div><div>'+esc(g.title)+'</div><div class="dim">'+esc(g.summary||'')+'</div><div class="acts"><button class="sm" data-g="'+esc(g.slug)+'">Edit</button>'+(g.published?'<a class="sm" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="/guides/'+esc(g.slug)+'" target="_blank" rel="noopener">View on site</a>':'')+'</div></div>';}).join('');
  }).catch(function(e){$('glist').textContent=e.message;});}
@@ -637,7 +708,7 @@ $('plan').addEventListener('change',function(e){var id=e.target.getAttribute&&e.
 drawTech();
 drawShots();
 loadConfig().catch(function(){});
-if(KEY)api('orders').then(function(){show('add');loadBrands();igState();}).catch(function(){show('');});else show('');
+if(KEY)api('orders').then(function(){show('home');loadBrands();igState();}).catch(function(){show('');});else show('');
 })();
 </script>
 </body>
