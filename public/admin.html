@@ -180,8 +180,15 @@ details.ph>summary::-webkit-details-marker{display:none}
 <section id="t-plan" hidden>
 <h1>Marketing plan</h1>
 <a class="btn pop" href="/launch.html" style="text-decoration:none;margin:0 0 10px">Open the launch planner</a>
+<button class="btn" id="openalerts" type="button" style="margin:0 0 10px;background:transparent;color:var(--ink);border-color:var(--edge)">Drop alerts list</button>
 <button class="btn" id="openguides" type="button" style="margin:0 0 18px;background:transparent;color:var(--ink);border-color:var(--edge)">Write and manage guides</button>
 <div id="plan" class="mute">Loading…</div>
+</section>
+
+<section id="t-alerts" hidden>
+<h1>Drop alerts list</h1>
+<p class="mute" style="margin-top:0">Everyone who signed up on the site. New sign-ups land here by themselves.</p>
+<div id="alist" class="mute">Loading…</div>
 </section>
 
 <section id="t-guides" hidden>
@@ -221,7 +228,7 @@ function api(path,body){
 function signOut(){try{localStorage.removeItem('mt_admin_key');}catch(e){}KEY='';show('');}
 function show(tab){
   $('login').hidden=!!KEY;$('tabs').hidden=!KEY;
-  ['add','orders','stock','cats','stats','plan','guides'].forEach(function(t){$('t-'+t).hidden=!KEY||t!==tab;});
+  ['add','orders','stock','cats','stats','plan','guides','alerts'].forEach(function(t){$('t-'+t).hidden=!KEY||t!==tab;});
   document.querySelectorAll('nav button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===tab);});
   if(!KEY)return;
   if(tab==='orders')loadOrders();
@@ -230,6 +237,7 @@ function show(tab){
   if(tab==='stats')loadStats();
   if(tab==='plan')loadPlan();
   if(tab==='guides')loadGuides();
+  if(tab==='alerts')loadAlerts();
   window.scrollTo(0,0);
 }
 function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();$('bn').value=c.notice||'';});}
@@ -494,6 +502,25 @@ function drawStats(){
   '<h2>Month by month</h2>'+tbl(mrows,'Month')+
   '<p class="dim" style="margin-top:20px">A sale counts once you tap "Payment received", or when you mark a piece as sold by hand. Shipping costs are not included.</p>';
 }
+
+// ----- drop alerts list -----
+var people=[];
+$('openalerts').onclick=function(){show('alerts');};
+function loadAlerts(){api('alerts').then(function(d){people=d.people;
+  var week=people.filter(function(p){return Date.now()-new Date(p.at)<7*864e5;}).length;
+  $('alist').className='';
+  $('alist').innerHTML='<div class="kpis"><div class="kpi"><b>'+people.length+'</b><span>People on the list</span></div><div class="kpi"><b>'+week+'</b><span>Joined in the last 7 days</span></div></div>'+
+   (people.length?'<button class="btn pop" id="al-vcf" type="button">Save everyone to my phone contacts</button><button class="btn" id="al-copy" type="button" style="background:transparent;color:var(--ink);border-color:var(--edge);margin-top:10px">Copy all numbers</button>'+
+   '<p class="dim" style="margin:10px 0 0">To message them: save the contacts, then in WhatsApp Business open New broadcast and pick everyone whose name starts with "MT Alert".</p><p class="msg" id="al-msg" role="status"></p>'+
+   people.map(function(p){return '<div class="box" style="margin-top:8px"><div class="t"><b>'+esc(p.name)+'</b><span class="dim">'+new Date(p.at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+'</span></div><div>'+esc(p.phone)+'</div><div class="dim">'+esc([p.interest,p.size,p.email].filter(Boolean).join(' · '))+'</div><div class="acts"><a class="sm" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="https://wa.me/91'+esc(p.phone)+'" target="_blank" rel="noopener">WhatsApp</a><button class="sm" data-rmp="'+esc(p.phone)+'">Remove</button></div></div>';}).join('')
+   :'<p class="mute">Nobody yet. The sign-up link is the "Sign up for alerts" line at the top of the shop, and at mountainthrifters.com/alerts</p>');
+ }).catch(function(e){$('alist').textContent=e.message;});}
+$('alist').onclick=function(e){var b=e.target.closest('button');if(!b)return;
+  if(b.id==='al-copy'){var t=people.map(function(p){return '+91'+p.phone;}).join(', ');(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){say('al-msg','Copied '+people.length+' numbers.','good');},function(){say('al-msg','Could not copy on this phone.','bad');});}
+  else if(b.id==='al-vcf'){var v=people.map(function(p){return 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:MT Alert '+p.name.replace(/[\r\n;,]/g,' ')+'\r\nN:'+p.name.replace(/[\r\n;,]/g,' ')+';MT Alert;;;\r\nTEL;TYPE=CELL:+91'+p.phone+'\r\nEND:VCARD';}).join('\r\n');
+    var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([v],{type:'text/vcard'}));a.download='mountain-thrifters-alerts.vcf';document.body.appendChild(a);a.click();a.remove();say('al-msg','Open the downloaded file and choose to add the contacts.','good');}
+  else if(b.hasAttribute('data-rmp')){if(confirm('Remove this person from the list?'))api('alert-delete',{phone:b.getAttribute('data-rmp')}).then(loadAlerts);}
+};
 
 // ----- guides -----
 var guideRows=[],gSlug='';

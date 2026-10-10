@@ -55,6 +55,7 @@ async function init(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, data TEXT, at TEXT)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, product_id TEXT, type TEXT, bytes BLOB)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS guides (slug TEXT PRIMARY KEY, data TEXT, published INTEGER, at TEXT)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS subscribers (phone TEXT PRIMARY KEY, data TEXT, at TEXT)'),
   ]);
   ready = true;
 }
@@ -334,6 +335,10 @@ async function admin(request, env, path, ctx) {
   }
   if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx, true), hideSamples: (await setting(env, 'hide_samples')) === '1' });
   if (path === '/api/admin/stats' && request.method === 'GET') return stats(request, env, ctx);
+  if (path === '/api/admin/alerts' && request.method === 'GET') {
+    const rows = await env.DB.prepare('SELECT phone, data, at FROM subscribers ORDER BY at DESC LIMIT 5000').all();
+    return json({ people: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), phone: r.phone, at: r.at })) });
+  }
   if (path === '/api/admin/guides' && request.method === 'GET') {
     // The first time the owner opens Guides, two starter drafts are added for them to edit.
     if ((await setting(env, 'guides_seeded')) !== '1') {
@@ -391,6 +396,7 @@ async function admin(request, env, path, ctx) {
     return json({ ok: true, slug: slugv });
   }
   if (path === '/api/admin/guide-delete') { await env.DB.prepare('DELETE FROM guides WHERE slug = ?').bind(String(body.slug)).run(); return json({ ok: true }); }
+  if (path === '/api/admin/alert-delete') { await env.DB.prepare('DELETE FROM subscribers WHERE phone = ?').bind(String(body.phone)).run(); return json({ ok: true }); }
   if (path === '/api/admin/banner') { await saveSetting(env, 'banner', clean(body.text, 140) || '-'); return json({ ok: true }); }
   if (path === '/api/admin/samples') { await saveSetting(env, 'hide_samples', body.hide ? '1' : '0'); return json({ ok: true }); }
   if (path === '/api/admin/categories') {
@@ -546,7 +552,7 @@ const rupees = (n) => 'Rs ' + Number(n || 0).toLocaleString('en-IN');
 const PAGES = { '/': ['Thrifted outdoor gear from Manali, delivered across India', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Thrifted and new, at fair prices, shipped from Manali across India.'],
   '/shop': ['Shop thrifted outdoor gear', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Filter by brand, size and category. Delivered across India.'],
   '/sell': ['Sell your outdoor gear', 'Sell your jacket, boots, backpack, tent or bulk stock to The Mountain Thrifters. Get an offer and get paid by UPI.'],
-  '/feed': ['Shop our Instagram', 'Tap any photo from @mountain_thrifters to buy that piece. Mountain gear, thrifted and new, shipped across India.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''], '/done': ['Order placed', ''] };
+  '/feed': ['Shop our Instagram', 'Tap any photo from @mountain_thrifters to buy that piece. Mountain gear, thrifted and new, shipped across India.'], '/alerts': ['Get drop alerts', 'Be first to see new mountain gear. Sign up and we will message you on WhatsApp before each drop.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''], '/done': ['Order placed', ''] };
 // Plain HTML put inside the page before the app starts, so search engines
 // read real headings, links and prices instead of a loading message.
 const fullName = (p) => (p.brand ? p.brand + ' ' : '') + p.name;
@@ -682,6 +688,19 @@ export default {
       if (url.pathname === '/api/config') return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env) });
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);
+      // Drop alerts sign-up: saved straight onto the list the owners see in their app.
+      if (url.pathname === '/api/alerts' && request.method === 'POST') {
+        const b = await request.json().catch(() => ({}));
+        const name = clean(b.name, 60), phone = clean(b.phone, 20).replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
+        if (!name || phone.length !== 10) return json({ error: 'details', message: 'Add your name and a 10-digit WhatsApp number.' }, 400);
+        if (!b.agree) return json({ error: 'details', message: 'Please tick the box so we know we can message you.' }, 400);
+        const data = { name, email: /^\S+@\S+\.\S+$/.test(String(b.email || '')) ? clean(b.email, 120) : '', interest: clean(b.interest, 60), size: clean(b.size, 20) };
+        const fresh = !(await env.DB.prepare('SELECT phone FROM subscribers WHERE phone = ?').bind(phone).first());
+        await env.DB.prepare('INSERT INTO subscribers (phone, data, at) VALUES (?, ?, ?) ON CONFLICT(phone) DO UPDATE SET data = excluded.data').bind(phone, JSON.stringify(data), new Date().toISOString()).run();
+        if (fresh && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) ctx.waitUntil(fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/sendMessage', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: 'New drop-alerts sign-up: ' + name + ' ' + phone }) }).catch(() => {}));
+        return json({ ok: true, whatsapp: whatsapp(env) });
+      }
       if (url.pathname.startsWith('/api/admin/')) return admin(request, env, url.pathname, ctx);
       return json({ error: 'not_found' }, 404);
     } catch (e) {

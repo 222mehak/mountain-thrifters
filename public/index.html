@@ -240,8 +240,8 @@ function load(){
     if(a[1]&&a[1].whatsapp)S.wa=a[1].whatsapp;
     S.loaded=true;
     document.getElementById('fwa').href=waLink('Hi Mountain Thrifters!');
-    var drop=(a[1]&&a[1].notice)||'';
-    document.getElementById('notice').innerHTML=(drop?'<div class="notice drop">'+esc(drop)+' <a href="'+esc(waLink('Hi Mountain Thrifters! Please add me to the gear drop alerts.'))+'" target="_blank" rel="noopener">Sign up for alerts</a></div>':'')+
+    var drop=(a[1]&&a[1].notice)||'';S.notice=drop;
+    document.getElementById('notice').innerHTML=(drop?'<div class="notice drop">'+esc(drop)+' <a href="/alerts" data-link>Sign up for alerts</a></div>':'')+
       (S.products.some(function(p){return p.sample;})?'<div class="notice">We are stocking the shelves. The pieces shown for now are samples.</div>':'');
     bagCount();
   });
@@ -438,6 +438,17 @@ function guides(slugv){
     app.innerHTML='<div class="wrap page"><a class="back" href="/guides" data-link>All guides</a><div class="guide"><h1 style="font-size:clamp(38px,6vw,60px)">'+esc(g.title)+'</h1><p class="mute" style="font-size:18px">'+esc(g.summary)+'</p>'+g.html+'<div style="margin-top:40px"><a class="btn pop" href="/shop" data-link>Shop the gear</a></div></div></div>';
   });
 }
+function alerts(){
+  var cats=S.cats.map(function(c){return '<option>'+esc(c.name)+'</option>';}).join('');
+  app.innerHTML='<div class="wrap page"><div class="narrow"><div class="eye">Drop alerts</div><h1 style="margin-top:10px">Get first look</h1><p class="mute">Every piece is one of one, so the good stuff goes fast. Leave your WhatsApp number and we will message you before each drop.</p>'+
+  '<form id="af" novalidate><label for="al-name">Your name</label><input id="al-name" name="name" autocomplete="name" required>'+
+  '<label for="al-phone">WhatsApp number (10 digits)</label><input id="al-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" required>'+
+  '<label for="al-int">What are you after? (optional)</label><select id="al-int" name="interest"><option value="">Everything</option>'+cats+'</select>'+
+  '<label for="al-size">Your size (optional)</label><input id="al-size" name="size" placeholder="M, UK 8">'+
+  '<label for="al-email">Email (optional)</label><input id="al-email" name="email" type="email" autocomplete="email">'+
+  '<label for="al-ok" style="display:flex;gap:12px;align-items:flex-start;letter-spacing:0;text-transform:none;font-size:15px;color:var(--ink);margin-top:20px;cursor:pointer"><input id="al-ok" name="agree" type="checkbox" style="width:24px;height:24px;flex:none;accent-color:#E8623A"><span>Yes, message me on WhatsApp about new drops. I can ask to stop any time.</span></label>'+
+  '<p class="err" id="alerr" role="alert"></p><button class="btn pop wide" style="margin-top:8px">Put me on the list</button></form></div></div>';
+}
 function feed(){
   app.innerHTML='<div class="wrap page"><div class="shead"><div><div class="eye">@mountain_thrifters</div><h1 style="margin-top:10px">Shop our Instagram</h1><p class="mute" style="margin:10px 0 0">Tap a photo to buy that piece.</p></div><a class="btn ghost" href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Follow us</a></div><div id="fg" class="mute">Loading the feed…</div></div>';
   (S.ig?Promise.resolve():loadIg('')).then(drawFeed);
@@ -449,7 +460,7 @@ function drawFeed(){
 }
 
 // ----- routing -----
-var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',guides:'Mountain gear guides',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
+var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',alerts:'Get drop alerts',guides:'Mountain gear guides',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
 function render(){
   var path=location.pathname.replace(/\/+$/,'')||'/',name=path.split('/')[1]||'home';
   document.body.classList.toggle('home',path==='/');
@@ -467,6 +478,7 @@ function render(){
   else if(path==='/done')done();
   else if(path==='/sell')sell();
   else if(path==='/feed')feed();
+  else if(path==='/alerts')alerts();
   else if(path==='/guides'||path.indexOf('/guides/')===0)guides(path.slice(8));
   else home();
   if(name==='c'||name==='p')name='shop';
@@ -491,6 +503,15 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('submit',function(e){
   if(e.target.id==='co'){e.preventDefault();placeOrder(e.target);}
+  if(e.target.id==='af'){e.preventDefault();var af=e.target,ad=new FormData(af),ab=af.querySelector('button'),ae=document.getElementById('alerr');
+    ab.disabled=true;ae.textContent='';
+    fetch('/api/alerts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:ad.get('name'),phone:ad.get('phone'),interest:ad.get('interest'),size:ad.get('size'),email:ad.get('email'),agree:!!ad.get('agree')})})
+     .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(res){
+      if(!res.ok){ae.textContent=res.j.message||'That did not work. Please try again.';ab.disabled=false;return;}
+      app.innerHTML='<div class="wrap page"><div class="narrow"><div class="eye">You are on the list</div><h1 style="margin-top:10px">One last step</h1>'+
+       '<div class="step"><p>WhatsApp only delivers our drop messages to people who have our number saved. Tap below, send the message, then save our number as <b>Mountain Thrifters</b>.</p><a class="btn wa wide" href="'+esc(waLink('Hi Mountain Thrifters! I signed up for drop alerts. I am '+ad.get('name')+'.'))+'" target="_blank" rel="noopener">Say hi on WhatsApp</a></div>'+
+       '<p class="mute">'+esc(S.notice||'')+'</p><a class="btn ghost" href="/shop" data-link>Shop what is up now</a></div></div>';window.scrollTo(0,0);
+     }).catch(function(){ae.textContent='Could not reach the shop. Check your connection and try again.';ab.disabled=false;});}
   if(e.target.id==='sf'){e.preventDefault();var d=new FormData(e.target);
     window.open(waLink('Hi Mountain Thrifters! I have gear to sell.\nName: '+d.get('name')+'\nCity: '+(d.get('city')||'')+'\nSelling: '+d.get('kind')+'\nDetails: '+d.get('what')+'\nPhotos coming next.'),'_blank','noopener');}
 });
