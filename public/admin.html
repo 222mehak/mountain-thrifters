@@ -147,7 +147,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 <div class="box"><label for="whoami" style="margin-top:0">Who uses this phone?</label><div class="addrow"><input id="whoami" maxlength="20" placeholder="Your first name"><button class="sm" id="whosave" type="button">Save</button></div><p class="dim" id="whomsg" style="margin:6px 0 0">Your name is added to the pieces you list and the orders you update, so you both know who did what.</p></div>
 <div class="grp">Selling</div>
 <button class="tile" data-go="drop"><span>The weekly drop<small>Line pieces up to go live together</small></span><span class="go">›</span></button>
-<button class="tile" data-go="codes"><span>Discount codes and offers<small>Codes for hostels, creators and regulars</small></span><span class="go">›</span></button>
+<button class="tile" data-go="codes"><span>Sales, codes and offers<small>Run a sale, make codes, thank regulars</small></span><span class="go">›</span></button>
 <button class="tile" data-go="people"><span>Customers<small>Everyone who has ordered, and repeat buyers</small></span><span class="go">›</span></button>
 <a class="tile" href="/print.html?tags=all" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><span>Print price tags<small>A QR tag for every piece on sale</small></span><span class="go">›</span></a>
 <div class="grp">Buying stock</div>
@@ -180,7 +180,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 </section>
 
 <section id="t-codes" hidden>
-<h1>Codes and offers</h1>
+<h1>Sales and codes</h1>
 <div id="codes" class="mute">Loading…</div>
 </section>
 
@@ -706,9 +706,13 @@ $('drop').onclick=function(e){
 
 // ----- discount codes and the buy-more offer -----
 var codeKind='percent';
-function loadCodes(){api('codes').then(function(d){
-  var b=d.bundle;$('codes').className='';
-  $('codes').innerHTML='<p class="mute" style="margin-top:0">Give a code to a hostel, a creator or a regular. Customers type it at checkout, and you see how often each one is used.</p>'+
+function loadCodes(){Promise.all([api('codes'),api('products')]).then(function(rr){var d=rr[0];
+  var b=d.bundle,onSale=rr[1].products.filter(function(p){return p.saleBase&&!p.sold;}),endsAt=onSale.map(function(p){return p.saleEnds||'';}).sort().pop();$('codes').className='';
+  $('codes').innerHTML='<h2 style="margin-top:0">Run a sale</h2>'+
+   (onSale.length?'<div class="box" style="border-left:3px solid var(--pop)"><b>A sale is running on '+onSale.length+' piece'+(onSale.length>1?'s':'')+'.</b><div class="mute">'+(endsAt?'Prices go back by themselves after '+new Date(endsAt).toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata',weekday:'long',day:'numeric',month:'short'})+'.':'No end date. Prices stay down until you end it.')+'</div><div class="acts"><button class="sm" data-send type="button">End the sale now</button><button class="sm" data-go="stock:live" type="button">See the pieces</button></div></div>':'')+
+   '<div class="box"><p class="mute" style="margin:0 0 4px">Marks down every piece that has been on sale long enough, in one go. The shop shows the old price crossed out.</p><div class="r2"><div><label for="s-pct">Percent off</label><input id="s-pct" inputmode="numeric" placeholder="15"></div><div><label for="s-days">On sale for at least (days)</label><input id="s-days" inputmode="numeric" value="30"></div></div>'+
+   '<label for="s-end">Last day of the sale (optional)</label><input id="s-end" type="date"><p class="dim" style="margin:6px 0 0">With a last day, prices go back to normal by themselves that night. Use 0 days to include everything, but fresh drop pieces are better left at full price.</p>'+
+   '<div class="acts"><button class="sm" data-sprev type="button">How many pieces?</button><button class="sm pop" data-sgo type="button">Start the sale</button></div><p class="msg" id="s-msg" role="status"></p></div><h2>Discount codes</h2>'+'<p class="mute" style="margin-top:0">Give a code to a hostel, a creator or a regular. Customers type it at checkout, and you see how often each one is used.</p>'+
    '<div class="box"><div class="r2"><div><label for="k-code" style="margin-top:0">Code</label><input id="k-code" maxlength="24" placeholder="ZOSTEL10" autocapitalize="characters"></div><div><label for="k-val" style="margin-top:0">Amount</label><input id="k-val" inputmode="numeric" placeholder="10"></div></div>'+
    '<div class="fl">Kind</div><div class="seg" id="k-kind" style="grid-template-columns:1fr 1fr"><button type="button" class="'+(codeKind==='percent'?'on':'')+'" data-k="percent">Percent off</button><button type="button" class="'+(codeKind==='flat'?'on':'')+'" data-k="flat">Rupees off</button></div>'+
    '<div class="r2"><div><label for="k-min">Smallest order (Rs)</label><input id="k-min" inputmode="numeric" placeholder="No minimum"></div><div><label for="k-lim">Most times it can be used</label><input id="k-lim" inputmode="numeric" placeholder="No limit"></div></div>'+
@@ -720,6 +724,13 @@ function loadCodes(){api('codes').then(function(d){
  }).catch(function(e){$('codes').textContent=e.message;});}
 $('codes').onclick=function(e){
   var b=e.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-sprev')||b.hasAttribute('data-sgo')){var go=b.hasAttribute('data-sgo'),sb={pct:$('s-pct').value,minDays:$('s-days').value,ends:$('s-end').value,preview:true};
+    api('sale',sb).then(function(r){
+      if(!go||!r.count){say('s-msg',r.count?r.count+' piece'+(r.count>1?'s':'')+' would be marked down.':'No pieces match. Try fewer days.',r.count?'good':'bad');return;}
+      if(!confirm('Mark down '+r.count+' piece'+(r.count>1?'s':'')+' by '+parseInt(sb.pct,10)+'%?'))return;
+      sb.preview=false;return api('sale',sb).then(loadCodes);
+    }).catch(function(x){say('s-msg',x.message,'bad');});return;}
+  if(b.hasAttribute('data-send')){if(confirm('End the sale and put every price back to normal?'))api('sale-end',{}).then(loadCodes);return;}
   if(b.hasAttribute('data-k')){codeKind=b.getAttribute('data-k');[].forEach.call(b.parentNode.children,function(x){x.classList.toggle('on',x===b);});}
   else if(b.hasAttribute('data-ksave'))api('code',{code:$('k-code').value,kind:codeKind,value:$('k-val').value,min:$('k-min').value,limit:$('k-lim').value,ends:$('k-end').value,note:$('k-note').value}).then(loadCodes).catch(function(x){say('k-msg',x.message,'bad');});
   else if(b.hasAttribute('data-kp')){var c=$('codes')._list.filter(function(x){return x.code===b.getAttribute('data-kp');})[0];api('code',{code:c.code,kind:c.kind,value:c.value,min:c.min,limit:c.limit,ends:c.ends,note:c.note,paused:!c.paused}).then(loadCodes);}
@@ -736,10 +747,19 @@ function loadPeople(){api('orders').then(function(d){
   $('people').className='';
   $('people').innerHTML='<div class="kpis"><div class="kpi"><b>'+buyers.length+'</b><span>Customers</span></div><div class="kpi"><b>'+rep+'</b><span>Came back for more</span></div></div>'+
    (buyers.length?'<button class="btn" id="pp-vcf" type="button" style="background:transparent;color:var(--ink);border-color:var(--edge)">Save customers to my phone contacts</button><p class="dim" style="margin:10px 0 0">Built from orders you marked as paid. Biggest spenders first.</p>'+
-   buyers.map(function(c){return '<div class="box" style="margin-top:8px"><div class="t"><b>'+esc(c.name)+'</b><b>'+rs(c.total)+'</b></div><div>'+esc(c.phone)+(c.city?', '+esc(c.city):'')+'</div><div class="dim">'+c.n+' order'+(c.n>1?'s':'')+' · last on '+new Date(c.last).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+'</div><div class="dim">'+esc(c.items.slice(0,4).join(', '))+(c.items.length>4?' and more':'')+'</div><div class="acts"><a class="sm" href="https://wa.me/91'+esc(c.phone)+'" target="_blank" rel="noopener">WhatsApp</a></div></div>';}).join('')
+   buyers.map(function(c){return '<div class="box" style="margin-top:8px"><div class="t"><b>'+esc(c.name)+'</b><b>'+rs(c.total)+'</b></div><div>'+esc(c.phone)+(c.city?', '+esc(c.city):'')+'</div><div class="dim">'+c.n+' order'+(c.n>1?'s':'')+' · last on '+new Date(c.last).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+'</div><div class="dim">'+esc(c.items.slice(0,4).join(', '))+(c.items.length>4?' and more':'')+'</div><div class="acts"><a class="sm" href="https://wa.me/91'+esc(c.phone)+'" target="_blank" rel="noopener">WhatsApp</a><button class="sm" data-thank="'+esc(c.phone)+'" type="button">Make a thank-you code</button></div></div>';}).join('')
    :'<p class="mute">Nobody yet. Customers appear here once you tap "Payment received" on their order.</p>');
  }).catch(function(e){$('people').textContent=e.message;});}
-$('people').onclick=function(e){if(!e.target.closest('#pp-vcf'))return;
+$('people').onclick=function(e){
+  var tb=e.target.closest('[data-thank]');
+  if(tb){var c=buyers.filter(function(x){return x.phone===tb.getAttribute('data-thank');})[0],v=prompt('How much off their next order, in percent?','10');if(v===null)return;v=parseInt(v,10);if(!(v>=1&&v<=50)){alert('Type a number between 1 and 50.');return;}
+    var first=String(c.name).split(' ')[0],code=(first.toUpperCase().replace(/[^A-Z]/g,'').slice(0,6)||'MT')+Math.random().toString(36).slice(2,5).toUpperCase(),end=new Date(Date.now()+45*864e5+330*60000).toISOString().slice(0,10);
+    tb.disabled=true;api('code',{code:code,kind:'percent',value:v,limit:1,ends:end,note:'Thank-you for '+c.name}).then(function(){
+      var a=document.createElement('a');a.className='sm pop';a.target='_blank';a.rel='noopener';a.textContent='Send '+code+' on WhatsApp';
+      a.href='https://wa.me/91'+c.phone+'?text='+encodeURIComponent('Hi '+first+', thanks for buying from The Mountain Thrifters. Here is '+v+'% off your next order, just for you: '+code+'\nType it at checkout on '+SHOP.replace('https://','')+'. It works once and is good for 45 days.');
+      tb.replaceWith(a);
+    }).catch(function(x){alert(x.message);tb.disabled=false;});return;}
+  if(!e.target.closest('#pp-vcf'))return;
   var v=buyers.map(function(p){var n=String(p.name).replace(/[\r\n;,]/g,' ');return 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:MT Customer '+n+'\r\nN:'+n+';MT Customer;;;\r\nTEL;TYPE=CELL:+91'+p.phone+'\r\nEND:VCARD';}).join('\r\n');
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([v],{type:'text/vcard'}));a.download='mountain-thrifters-customers.vcf';document.body.appendChild(a);a.click();a.remove();};
 

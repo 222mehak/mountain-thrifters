@@ -252,7 +252,7 @@ async function allProducts(request, env, ctx, priv) {
   const gone = new Set((sold.results || []).map((r) => r.product_id));
   return list.map((p) => {
     const out = { ...p, id: String(p.id), sold: !!p.sold || gone.has(String(p.id)) };
-    if (!priv) { for (const k of ['cost', 'source', 'by', 'igPending', 'igPosted', 'igResult', 'fbPending', 'fbPosted', 'draft', 'liveAt', 'addedAt']) delete out[k]; }
+    if (!priv) { for (const k of ['cost', 'saleBase', 'source', 'by', 'igPending', 'igPosted', 'igResult', 'fbPending', 'fbPosted', 'draft', 'liveAt', 'addedAt']) delete out[k]; }
     else { out.hidden = hidden(out, now); out.views = (counts[out.id] || {}).view || 0; out.bags = (counts[out.id] || {}).bag || 0; }
     return out;
   });
@@ -523,6 +523,20 @@ async function igPublish(origin, env, product, toIg, toFb) {
   const good = [ig ? 'Instagram' : '', fb ? 'Facebook' : ''].filter(Boolean), bad = [igErr ? 'Instagram: ' + igErr : '', fbErr ? 'Facebook: ' + fbErr : ''].filter(Boolean);
   return { text: (good.length ? 'posted to ' + good.join(' and ') : 'failed') + (bad.length ? (good.length ? ', but ' : ': ') + bad.join('; ') : ''), ig, fb };
 }
+// Puts sale prices back to what they were. With "due", only sales whose last day has passed.
+async function endSale(env, due) {
+  const now = new Date().toISOString(), stmts = [];
+  const rows = await env.DB.prepare('SELECT id, data FROM products').all();
+  for (const r of rows.results || []) {
+    const p = JSON.parse(r.data);
+    if (!p.saleBase || (due && !(p.saleEnds && p.saleEnds <= now))) continue;
+    p.price = p.saleBase; if (!(Number(p.was) > p.price)) delete p.was;
+    delete p.saleBase; delete p.saleEnds;
+    stmts.push(env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), r.id));
+  }
+  for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
+  return stmts.length;
+}
 const fbWaiting = (p) => (p.fbPending === undefined ? !!p.igPending : !!p.fbPending);
 
 // Everything the Numbers tab needs: each sale, what is waiting, and what is unsold.
@@ -633,6 +647,29 @@ async function admin(request, env, path, ctx) {
   }
   if (path === '/api/admin/code-delete') { await env.DB.prepare('DELETE FROM codes WHERE code = ?').bind(String(body.code)).run(); return json({ ok: true }); }
   if (path === '/api/admin/shipping') { await saveSetting(env, 'shipping', JSON.stringify({ fee: num(body.fee) || 0, freeOver: num(body.freeOver) || 0 })); return json({ ok: true }); }
+  // A sale: mark down every piece that has been on sale long enough, all at once.
+  if (path === '/api/admin/sale') {
+    const pct = num(body.pct) || 0, minDays = num(body.minDays) || 0;
+    if (pct < 5 || pct > 70) return json({ error: 'details', message: 'Choose between 5 and 70 percent off.' }, 400);
+    const ends = /^\d{4}-\d{2}-\d{2}$/.test(String(body.ends || '')) ? new Date(body.ends + 'T23:59:00+05:30').toISOString() : '';
+    const now = Date.now();
+    if (ends && new Date(ends).getTime() < now) return json({ error: 'details', message: 'The last day is in the past.' }, 400);
+    const gone = new Set(((await env.DB.prepare('SELECT product_id FROM sold').all()).results || []).map((r) => r.product_id));
+    const rows = await env.DB.prepare('SELECT id, data, at FROM products').all(), stmts = [];
+    for (const r of rows.results || []) {
+      const p = JSON.parse(r.data);
+      if (gone.has(r.id) || hidden(p) || p.saleBase || !p.price) continue;
+      if ((now - new Date(p.liveAt || r.at).getTime()) / 864e5 < minDays) continue;
+      const base = Number(p.price), price = Math.max(10, Math.round(base * (100 - pct) / 100 / 10) * 10);
+      if (price >= base) continue;
+      p.saleBase = base; p.was = Math.max(Number(p.was) || 0, base); p.price = price;
+      if (ends) p.saleEnds = ends;
+      stmts.push(env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), r.id));
+    }
+    if (!body.preview) for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
+    return json({ ok: true, count: stmts.length });
+  }
+  if (path === '/api/admin/sale-end') return json({ ok: true, count: await endSale(env, false) });
   if (path === '/api/admin/bundle') {
     const n = num(body.n) || 2, pct = num(body.pct) || 0;
     if (body.on && (n < 2 || pct < 1 || pct > 50)) return json({ error: 'details', message: 'Use 2 or more pieces, and between 1 and 50 percent.' }, 400);
@@ -1116,6 +1153,7 @@ export default {
   async scheduled(event, env, ctx) {
     await init(env);
     if (event.cron !== '0 3 * * 1') {
+      await endSale(env, true);
       const now = new Date().toISOString();
       const rows = await env.DB.prepare('SELECT id, data FROM products').all();
       const live = (rows.results || []).map((r) => JSON.parse(r.data)).filter((p) => !p.draft && p.liveAt && p.liveAt <= now);
