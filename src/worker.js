@@ -36,6 +36,30 @@ async function bannerText(env) {
   const v = row ? row.value : DEFAULT_BANNER;
   return v === '-' ? '' : v;
 }
+// The weekly drop: day of the week (0 = Sunday) and time, in India time.
+const DEFAULT_DROP = { day: 0, hour: 19, minute: 0 };
+async function dropRule(env) {
+  try { const v = JSON.parse(await setting(env, 'drop')); if (v && v.day >= 0 && v.day <= 6 && v.hour >= 0 && v.hour <= 23) return { day: Number(v.day), hour: Number(v.hour), minute: Number(v.minute) || 0 }; } catch (e) { /* default */ }
+  return DEFAULT_DROP;
+}
+function nextDrop(rule, from) {
+  const ist = new Date((from || Date.now()) + 330 * 60000); // India time, read with getUTC*
+  const t = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate(), rule.hour, rule.minute));
+  t.setUTCDate(t.getUTCDate() + ((rule.day - ist.getUTCDay() + 7) % 7));
+  if (t.getTime() <= ist.getTime()) t.setUTCDate(t.getUTCDate() + 7);
+  return new Date(t.getTime() - 330 * 60000).toISOString();
+}
+// A piece shoppers cannot see yet: a draft, or lined up for a drop that has not happened.
+const hidden = (p, now) => !!p.draft || (!!p.liveAt && p.liveAt > (now || new Date().toISOString()));
+// Buy-more-save-more. Off until the owner turns it on.
+async function bundleRule(env) {
+  try { const v = JSON.parse(await setting(env, 'bundle')); if (v && v.on && v.n >= 2 && v.pct > 0 && v.pct <= 50) return { on: true, n: Number(v.n), pct: Number(v.pct) }; if (v) return { on: false, n: Number(v.n) || 2, pct: Number(v.pct) || 10 }; } catch (e) { /* off */ }
+  return { on: false, n: 2, pct: 10 };
+}
+async function tg(env, text) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return false;
+  try { const r = await fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/sendMessage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text }) }); return r.ok; } catch (e) { return false; }
+}
 async function categories(env) {
   try { const v = JSON.parse(await setting(env, 'categories')); if (Array.isArray(v) && v.length) return v; } catch (e) { /* use the defaults */ }
   return DEFAULT_CATEGORIES;
@@ -58,6 +82,9 @@ async function init(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS subscribers (phone TEXT PRIMARY KEY, data TEXT, at TEXT)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, phone TEXT, status TEXT, data TEXT, at TEXT)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS requests (id TEXT PRIMARY KEY, phone TEXT, status TEXT, data TEXT, at TEXT)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS counters (id TEXT, kind TEXT, n INTEGER, PRIMARY KEY (id, kind))'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS codes (code TEXT PRIMARY KEY, data TEXT, at TEXT)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS sourcing (id TEXT PRIMARY KEY, data TEXT, at TEXT)'),
   ]);
   ready = true;
 }
@@ -153,7 +180,17 @@ async function allProducts(request, env, ctx, priv) {
   }
   // Stock added from the admin page, newest first.
   const own = await env.DB.prepare('SELECT data, at FROM products ORDER BY at DESC').all();
-  list = (own.results || []).map((r) => ({ ...JSON.parse(r.data), listedAt: r.at })).concat(list);
+  const now = new Date().toISOString();
+  let mine = (own.results || []).map((r) => { const d = JSON.parse(r.data); return { ...d, listedAt: d.liveAt || r.at, addedAt: r.at }; });
+  if (!priv) mine = mine.filter((p) => !hidden(p, now));
+  mine.sort((a, b) => (a.listedAt < b.listedAt ? 1 : -1));
+  list = mine.concat(list);
+  let counts = null;
+  if (priv) {
+    counts = {};
+    const c = await env.DB.prepare('SELECT id, kind, n FROM counters').all();
+    for (const r of c.results || []) (counts[r.id] = counts[r.id] || {})[r.kind] = r.n;
+  }
   try {
     const ig = await igPage(env, ctx, '');
     for (const p of ig.posts) { const prod = productFromPost(p); if (prod) list.push(prod); }
@@ -162,7 +199,8 @@ async function allProducts(request, env, ctx, priv) {
   const gone = new Set((sold.results || []).map((r) => r.product_id));
   return list.map((p) => {
     const out = { ...p, id: String(p.id), sold: !!p.sold || gone.has(String(p.id)) };
-    if (!priv) delete out.cost;
+    if (!priv) { for (const k of ['cost', 'source', 'by', 'igPending', 'igPosted', 'igResult', 'draft', 'liveAt', 'addedAt']) delete out[k]; }
+    else { out.hidden = hidden(out, now); out.views = (counts[out.id] || {}).view || 0; out.bags = (counts[out.id] || {}).bag || 0; }
     return out;
   });
 }
@@ -170,7 +208,7 @@ async function allProducts(request, env, ctx, priv) {
 // ---------- Alerts ----------
 async function notify(env, order) {
   const lines = order.items.map((i) => '- ' + i.name + (i.size ? ' (Size ' + i.size + ')' : '') + ' Rs ' + i.price);
-  const text = 'New order ' + order.id + '\n' + lines.join('\n') + '\nTotal: Rs ' + order.total +
+  const text = 'New order ' + order.id + '\n' + lines.join('\n') + (order.discount ? '\n' + order.discountLabel + ': minus Rs ' + order.discount : '') + '\nTotal: Rs ' + order.total +
     '\n\n' + order.name + '\n' + order.phone + '\n' + order.address + '\n' + order.city + ' ' + order.pincode +
     '\n\nWaiting for UPI payment. Confirm it in the admin page.';
   const jobs = [];
@@ -192,6 +230,27 @@ async function notify(env, order) {
 
 // ---------- Orders ----------
 const clean = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
+// Works out any money off: a discount code, or the buy-more offer. Whichever saves the customer more; never both.
+async function moneyOff(env, raw, subtotal, count) {
+  let off = 0, label = '', code = '', error = '';
+  const b = await bundleRule(env);
+  if (b.on && count >= b.n) { off = Math.round(subtotal * b.pct / 100); label = b.pct + '% off for ' + b.n + ' or more pieces'; }
+  const typed = clean(raw, 24).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (typed) {
+    const row = await env.DB.prepare('SELECT data FROM codes WHERE code = ?').bind(typed).first();
+    const c = row ? JSON.parse(row.data) : null;
+    if (!c) error = 'That code is not one of ours. Check the spelling.';
+    else if (c.paused) error = 'That code is not running right now.';
+    else if (c.ends && c.ends < new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)) error = 'That code has ended.';
+    else if (c.limit && (c.used || 0) >= c.limit) error = 'That code has been used up.';
+    else if (c.min && subtotal < c.min) error = 'That code works on orders of Rs ' + c.min + ' or more.';
+    else {
+      const v = Math.min(subtotal, c.kind === 'flat' ? c.value : Math.round(subtotal * c.value / 100));
+      if (v > off) { off = v; code = typed; label = 'Code ' + typed + (c.kind === 'flat' ? '' : ', ' + c.value + '% off'); }
+    }
+  }
+  return { off, label, code, error };
+}
 async function placeOrder(request, env, ctx) {
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: 'bad_request', message: 'Could not read the order.' }, 400); }
@@ -204,76 +263,168 @@ async function placeOrder(request, env, ctx) {
   const items = [];
   for (const id of ids) {
     const p = products.find((x) => x.id === id);
-    if (!p) return json({ error: 'unknown', message: 'One of these pieces is no longer listed.' }, 409);
+    if (!p || p.hidden) return json({ error: 'unknown', message: 'One of these pieces is no longer listed.' }, 409);
     if (p.sold) return json({ error: 'sold', message: p.name + ' has just sold.', productId: id }, 409);
     items.push({ id: p.id, name: (p.brand ? p.brand + ' ' : '') + p.name, size: p.size || '', price: Number(p.price) || 0,
       brand: p.brand || '', category: p.category || '', cost: p.cost == null ? null : Number(p.cost), listedAt: p.listedAt || '' });
   }
-  const total = items.reduce((s, i) => s + i.price, 0);
+  const subtotal = items.reduce((s, i) => s + i.price, 0);
+  const deal = await moneyOff(env, body.code, subtotal, items.length);
+  if (deal.error) return json({ error: 'code', message: deal.error }, 400);
+  const total = subtotal - deal.off;
+  // Share the money off across the pieces, so profit per piece stays right.
+  if (deal.off) { let left = deal.off; items.forEach((i, n) => { const cut = n === items.length - 1 ? left : Math.round(deal.off * i.price / subtotal); left -= cut; i.paid = i.price - cut; }); }
   const id = 'MT' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 1296).toString(36).toUpperCase().padStart(2, '0');
   const at = new Date().toISOString();
   const order = { id, items, total, name, phone, pincode, city, address };
+  if (deal.off) { order.subtotal = subtotal; order.discount = deal.off; order.discountLabel = deal.label; order.code = deal.code; }
   // One batch: if any piece was taken a moment ago, nothing is saved.
   const stmts = items.map((i) => env.DB.prepare('INSERT INTO sold (product_id, order_id, at) VALUES (?, ?, ?)').bind(i.id, id, at));
   stmts.push(env.DB.prepare('INSERT INTO orders (id, status, total, data, at) VALUES (?, ?, ?, ?, ?)').bind(id, 'awaiting payment', total, JSON.stringify(order), at));
+  if (deal.code) {
+    const row = await env.DB.prepare('SELECT data FROM codes WHERE code = ?').bind(deal.code).first();
+    if (row) { const c = JSON.parse(row.data); c.used = (c.used || 0) + 1; stmts.push(env.DB.prepare('UPDATE codes SET data = ? WHERE code = ?').bind(JSON.stringify(c), deal.code)); }
+  }
   try { await env.DB.batch(stmts); }
   catch (e) { return json({ error: 'sold', message: 'Someone bought one of these a moment ago. Your bag has been updated.' }, 409); }
   ctx.waitUntil(notify(env, order));
-  return json({ orderId: id, total, items: items.map((i) => ({ name: i.name, size: i.size, price: i.price })), upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
+  return json({ orderId: id, total, discount: deal.off, discountLabel: deal.label, items: items.map((i) => ({ name: i.name, size: i.size, price: i.price })), upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
 }
 
 // ---------- Admin ----------
 function isAdmin(request, env) { return !!env.ADMIN_KEY && request.headers.get('x-admin-key') === env.ADMIN_KEY; }
+const who = (request) => clean(request.headers.get('x-who'), 20);
+const num = (v) => { const n = String(v == null ? '' : v).replace(/[^\d]/g, ''); return n === '' ? null : parseInt(n, 10); };
+// The details of a piece, cleaned. With "only", just the ones that were sent (for edits).
+function fields(body, only) {
+  const all = {
+    name: () => clean(body.name, 80), brand: () => clean(body.brand, 40), category: () => clean(body.category, 40), sub: () => clean(body.sub, 40), gender: () => clean(body.gender, 12),
+    cost: () => num(body.cost),
+    // Technical details: only what the owner entered, never guessed.
+    waterproof: () => clean(body.waterproof, 30), weight: () => num(body.weight) || null,
+    tech: () => (Array.isArray(body.tech) ? body.tech : []).map((x) => clean(x, 30)).filter(Boolean).slice(0, 10),
+    tested: () => !!body.tested, testedLink: () => (/^https:\/\/(www\.)?instagram\.com\//.test(String(body.testedLink || '')) ? clean(body.testedLink, 200) : ''),
+    size: () => clean(body.size, 20), condition: () => clean(body.condition, 20), description: () => clean(body.description, 600), source: () => clean(body.source, 20),
+  };
+  const out = {};
+  for (const k of Object.keys(all)) if (!only || k in body) out[k] = all[k]();
+  return out;
+}
+function photoRow(env, imgId, productId, dataUrl, max) {
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(String(dataUrl));
+  if (!m) return { error: 'One of the photos could not be read.' };
+  const bin = atob(m[2]);
+  if (bin.length > (max || 1500000)) return { error: 'One of the photos is too large.' };
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { stmt: env.DB.prepare('INSERT OR REPLACE INTO images (id, product_id, type, bytes) VALUES (?, ?, ?, ?)').bind(imgId, productId, m[1], bytes), path: '/img/' + imgId };
+}
+// When a piece goes live: now, at the next drop, or kept as a draft.
+async function setWhen(env, p, when) {
+  const now = new Date().toISOString();
+  if (when === 'draft') { p.draft = true; delete p.liveAt; }
+  else if (when === 'drop') { p.draft = false; p.liveAt = nextDrop(await dropRule(env)); }
+  else if (when === 'now') { if (p.draft || (p.liveAt && p.liveAt > now)) p.liveAt = now; p.draft = false; }
+}
 // New stock from the admin page. Photos arrive already shrunk by the browser.
 async function addProduct(request, env, body) {
-  const name = clean(body.name, 80), price = parseInt(String(body.price).replace(/[^\d]/g, ''), 10);
-  if (!name || !price) return json({ error: 'details', message: 'Add a name and a price.' }, 400);
+  const when = ['draft', 'drop'].includes(body.when) ? body.when : 'now';
+  const price = num(body.price) || 0;
+  const f = fields(body);
+  if (when === 'draft') f.name = f.name || 'Draft piece';
+  else if (!f.name || !price) return json({ error: 'details', message: 'Add a name and a price.' }, 400);
   const pics = Array.isArray(body.images) ? body.images.slice(0, 6) : [];
   if (!pics.length) return json({ error: 'details', message: 'Add at least one photo.' }, 400);
-  const id = 'p' + Date.now().toString(36);
+  const id = 'p' + Date.now().toString(36) + (body.n ? String(Number(body.n) % 36) : '');
   const stmts = [], photos = [];
   for (let n = 0; n < pics.length; n++) {
-    const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(String(pics[n]));
-    if (!m) return json({ error: 'details', message: 'One of the photos could not be read.' }, 400);
-    const bin = atob(m[2]);
-    if (bin.length > 1500000) return json({ error: 'details', message: 'One of the photos is too large.' }, 400);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const imgId = id + '-' + n;
-    stmts.push(env.DB.prepare('INSERT INTO images (id, product_id, type, bytes) VALUES (?, ?, ?, ?)').bind(imgId, id, m[1], bytes));
-    photos.push('/img/' + imgId);
+    const r = photoRow(env, id + '-' + n, id, pics[n]);
+    if (r.error) return json({ error: 'details', message: r.error }, 400);
+    stmts.push(r.stmt); photos.push(r.path);
   }
-  const product = { id, name, brand: clean(body.brand, 40), category: clean(body.category, 40), sub: clean(body.sub, 40), gender: clean(body.gender, 12),
-    cost: String(body.cost == null ? '' : body.cost).replace(/[^\d]/g, '') === '' ? null : parseInt(String(body.cost).replace(/[^\d]/g, ''), 10),
-    // Technical details: only what the owner entered, never guessed.
-    waterproof: clean(body.waterproof, 30), weight: parseInt(String(body.weight == null ? '' : body.weight).replace(/[^\d]/g, ''), 10) || null,
-    tech: (Array.isArray(body.tech) ? body.tech : []).map((x) => clean(x, 30)).filter(Boolean).slice(0, 10),
-    tested: !!body.tested, testedLink: /^https:\/\/(www\.)?instagram\.com\//.test(String(body.testedLink || '')) ? clean(body.testedLink, 200) : '',
-    size: clean(body.size, 20), condition: clean(body.condition, 20), price, description: clean(body.description, 600), photo: photos[0], photos, colors: [], sold: false };
+  const product = { id, ...f, price, photo: photos[0], photos, colors: [], sold: false, by: who(request) };
+  await setWhen(env, product, when);
   // A copy of the first photo reshaped to a size Instagram accepts, when the original is too tall or wide.
-  const igm = /^data:(image\/jpeg);base64,(.+)$/.exec(String(body.igImage || ''));
-  if (igm) {
-    const bin = atob(igm[2]);
-    if (bin.length <= 1800000) {
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      stmts.push(env.DB.prepare('INSERT INTO images (id, product_id, type, bytes) VALUES (?, ?, ?, ?)').bind(id + '-ig', id, igm[1], bytes));
-      product.igPhoto = '/img/' + id + '-ig';
-    }
+  if (body.igImage) { const r = photoRow(env, id + '-ig', id, body.igImage, 1800000); if (r.stmt) { stmts.push(r.stmt); product.igPhoto = r.path; } }
+  let instagram = 'not requested';
+  const wait = hidden(product);
+  if (body.postToInstagram && wait) { product.igPending = true; instagram = when === 'drop' ? 'will post when the drop goes live' : 'will post when you put it live'; }
+  const at = new Date().toISOString();
+  stmts.push(env.DB.prepare('INSERT INTO products (id, data, at) VALUES (?, ?, ?)').bind(id, JSON.stringify(product), at));
+  await env.DB.batch(stmts);
+  if (body.postToInstagram && !wait) {
+    instagram = await igPublish(new URL(request.url).origin, env, product);
+    if (/^posted/.test(instagram)) { product.igPosted = true; await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(product), id).run(); }
   }
-  stmts.push(env.DB.prepare('INSERT INTO products (id, data, at) VALUES (?, ?, ?)').bind(id, JSON.stringify(product), new Date().toISOString()));
+  return json({ ok: true, id, instagram, liveAt: product.liveAt || '', matches: wait ? [] : await matchesFor(env, product) });
+}
+// Changing a piece after it was added. Only what is sent gets changed.
+async function updateProduct(request, env, body) {
+  const id = String(body.id || '');
+  const row = await env.DB.prepare('SELECT data FROM products WHERE id = ?').bind(id).first();
+  if (!row) return json({ error: 'details', message: 'Only pieces added from this app can be changed.' }, 400);
+  const p = JSON.parse(row.data), wasHidden = hidden(p), stmts = [];
+  Object.assign(p, fields(body, true));
+  if ('price' in body) {
+    const price = num(body.price) || 0, old = Number(p.price) || 0;
+    if (body.showWas === false) delete p.was;
+    else if (price < old && old > 0) p.was = Math.max(Number(p.was) || 0, old);
+    if (p.was && price >= p.was) delete p.was;
+    p.price = price;
+  }
+  if (Array.isArray(body.photos)) {
+    const keep = new Set(p.photos || []), next = [], stamp = Date.now().toString(36);
+    for (let n = 0; n < Math.min(6, body.photos.length); n++) {
+      const v = String(body.photos[n]);
+      if (keep.has(v)) { next.push(v); continue; }
+      const r = photoRow(env, id + '-' + stamp + n, id, v);
+      if (r.error) return json({ error: 'details', message: r.error }, 400);
+      stmts.push(r.stmt); next.push(r.path);
+    }
+    if (!next.length) return json({ error: 'details', message: 'Keep at least one photo.' }, 400);
+    for (const gone of (p.photos || []).filter((x) => !next.includes(x))) stmts.push(env.DB.prepare('DELETE FROM images WHERE id = ?').bind(gone.slice(5)));
+    if (next[0] !== p.photo && p.igPhoto) { stmts.push(env.DB.prepare('DELETE FROM images WHERE id = ?').bind(id + '-ig')); delete p.igPhoto; }
+    p.photos = next; p.photo = next[0];
+  }
+  if (body.igImage) { const r = photoRow(env, id + '-ig', id, body.igImage, 1800000); if (r.stmt) { stmts.push(r.stmt); p.igPhoto = r.path; } }
+  if (['now', 'drop', 'draft'].includes(body.when)) await setWhen(env, p, body.when);
+  const wait = hidden(p);
+  if (!p.draft && (!p.name || p.name === 'Draft piece' || !p.price)) return json({ error: 'details', message: 'Give it a name and a selling price before it goes on sale.' }, 400);
+  if ('postToInstagram' in body && wait) p.igPending = !!body.postToInstagram;
+  const post = !wait && (body.postToInstagram || (wasHidden && p.igPending));
+  stmts.push(env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), id));
   await env.DB.batch(stmts);
   let instagram = 'not requested';
-  if (body.postToInstagram) instagram = await igPublish(request, env, product);
-  return json({ ok: true, id, instagram });
+  if (post) {
+    instagram = await igPublish(new URL(request.url).origin, env, p);
+    p.igPending = false; if (/^posted/.test(instagram)) p.igPosted = true;
+    await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), id).run();
+  } else if (wait && p.igPending) instagram = 'will post when it goes live';
+  return json({ ok: true, id, instagram, liveAt: p.liveAt || '', matches: wasHidden && !wait ? await matchesFor(env, p) : [] });
+}
+// Open requests that look like this piece, so the owners can message those people first.
+const SKIP = new Set(['looking', 'want', 'need', 'size', 'with', 'like', 'good', 'under', 'about', 'something', 'mountain', 'gear', 'thrifted', 'please', 'anything', 'that', 'this', 'have', 'from', 'some', 'your', 'for', 'and', 'the', 'any', 'one', 'new', 'old', 'men', 'women', 'mens', 'womens']);
+const words = (v) => String(v || '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !SKIP.has(w)).map((w) => w.replace(/s$/, ''));
+async function matchesFor(env, p) {
+  const rows = await env.DB.prepare("SELECT id, phone, data, at FROM requests WHERE status = 'open' ORDER BY at DESC LIMIT 500").all();
+  const mine = new Set(words([p.brand, p.name, p.sub].join(' ')));
+  const out = [];
+  for (const r of rows.results || []) {
+    const d = JSON.parse(r.data);
+    const same = d.like && ((d.like.sub && d.like.sub === p.sub) || (!d.like.sub && d.like.category && d.like.category === p.category));
+    const hit = words(d.what).filter((w) => mine.has(w));
+    if (!same && !hit.length) continue;
+    const sizeFits = !d.size || !p.size || d.size.toLowerCase().replace(/\s/g, '') === String(p.size).toLowerCase().replace(/\s/g, '');
+    out.push({ id: r.id, phone: r.phone, name: d.name, what: d.what, size: d.size || '', sizeFits });
+  }
+  return out.sort((a, b) => Number(b.sizeFits) - Number(a.sizeFits)).slice(0, 30);
 }
 // Publishes the first photo to Instagram with a caption linking back to the piece.
-async function igPublish(request, env, product) {
+async function igPublish(origin, env, product) {
   const auth = await igAuth(env);
   if (auth.error) return auth.error;
   const token = auth.token;
   // Captions always show the shop's own address, whichever address the owner app was opened from.
-  const origin = new URL(request.url).origin;
   const shop = env.SHOP_URL || 'mountainthrifters.com';
   const caption = (product.brand ? product.brand + ' ' : '') + product.name + '\n' + [product.size ? 'Size ' + product.size : '', product.condition, 'Rs ' + product.price.toLocaleString('en-IN')].filter(Boolean).join(' · ') +
     '\n\nTo buy: tap the link in our bio, then tap this photo.\n' + shop + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
@@ -314,7 +465,7 @@ async function stats(request, env, ctx) {
     for (const i of JSON.parse(r.data).items || []) {
       const p = byId.get(String(i.id)) || {};
       if (p.sample) continue;
-      sales.push({ name: i.name, brand: i.brand || p.brand || '', category: i.category || p.category || '', price: Number(i.price) || 0,
+      sales.push({ name: i.name, brand: i.brand || p.brand || '', category: i.category || p.category || '', price: i.paid != null ? Number(i.paid) : Number(i.price) || 0, code: JSON.parse(r.data).code || '', off: i.paid != null ? Number(i.price) - Number(i.paid) : 0,
         cost: i.cost != null ? i.cost : (p.cost != null ? p.cost : null), listedAt: i.listedAt || p.listedAt || '', soldAt: r.at });
     }
   }
@@ -325,14 +476,30 @@ async function stats(request, env, ctx) {
     if (p && !p.sample) sales.push({ name: (p.brand ? p.brand + ' ' : '') + p.name, brand: p.brand || '', category: p.category || '', price: Number(p.price) || 0,
       cost: p.cost != null ? p.cost : null, listedAt: p.listedAt || '', soldAt: m.at, manual: true });
   }
-  const stock = products.filter((p) => !p.sold && !p.sample).map((p) => ({ price: Number(p.price) || 0, cost: p.cost != null ? p.cost : null, listedAt: p.listedAt || '', category: p.category || '' }));
-  return json({ sales, pending, cancelled, stock });
+  const stock = products.filter((p) => !p.sold && !p.sample && !p.draft).map((p) => ({ price: Number(p.price) || 0, cost: p.cost != null ? p.cost : null, listedAt: p.listedAt || '', category: p.category || '' }));
+  const watch = products.filter((p) => !p.sold && !p.sample && !p.hidden).sort((a, b) => b.views - a.views).slice(0, 8)
+    .map((p) => ({ name: (p.brand ? p.brand + ' ' : '') + p.name, views: p.views, bags: p.bags, days: p.listedAt ? Math.floor((Date.now() - new Date(p.listedAt)) / 864e5) : 0 }));
+  return json({ sales, pending, cancelled, stock, watch });
 }
 
 async function admin(request, env, path, ctx) {
   if (!isAdmin(request, env)) return json({ error: 'forbidden', message: 'Wrong admin key.' }, 403);
+  if (path === '/api/admin/drop' && request.method === 'GET') { const rule = await dropRule(env); return json({ rule, next: nextDrop(rule) }); }
+  if (path === '/api/admin/codes' && request.method === 'GET') {
+    const rows = await env.DB.prepare('SELECT code, data, at FROM codes ORDER BY at DESC').all();
+    return json({ codes: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), code: r.code, at: r.at })), bundle: await bundleRule(env) });
+  }
+  if (path === '/api/admin/sourcing' && request.method === 'GET') {
+    const rows = await env.DB.prepare('SELECT id, data, at FROM sourcing ORDER BY at DESC LIMIT 500').all();
+    return json({ trips: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), id: r.id })) });
+  }
+  if (path === '/api/admin/setup' && request.method === 'GET') return json({ telegram: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), email: !!(env.RESEND_API_KEY && env.NOTIFY_EMAIL), upi: !!env.UPI_ID });
+  if (path === '/api/admin/matches' && request.method === 'GET') {
+    const row = await env.DB.prepare('SELECT data FROM products WHERE id = ?').bind(new URL(request.url).searchParams.get('id') || '').first();
+    return json({ matches: row ? await matchesFor(env, JSON.parse(row.data)) : [] });
+  }
   if (path === '/api/admin/orders' && request.method === 'GET') {
-    const rows = await env.DB.prepare('SELECT id, status, total, data, at FROM orders ORDER BY at DESC LIMIT 200').all();
+    const rows = await env.DB.prepare('SELECT id, status, total, data, at FROM orders ORDER BY at DESC LIMIT 1000').all();
     return json({ orders: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), status: r.status, at: r.at })) });
   }
   if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx, true), hideSamples: (await setting(env, 'hide_samples')) === '1' });
@@ -371,6 +538,46 @@ async function admin(request, env, path, ctx) {
   if (request.method !== 'POST') return json({ error: 'not_found' }, 404);
   const body = await request.json().catch(() => ({}));
   if (path === '/api/admin/product') return addProduct(request, env, body);
+  if (path === '/api/admin/product-update') return updateProduct(request, env, body);
+  if (path === '/api/admin/drop') {
+    const rule = { day: Number(body.day), hour: Number(body.hour), minute: Number(body.minute) || 0 };
+    if (!(rule.day >= 0 && rule.day <= 6 && rule.hour >= 0 && rule.hour <= 23 && rule.minute >= 0 && rule.minute <= 59)) return json({ error: 'details', message: 'Pick a day and a time.' }, 400);
+    await saveSetting(env, 'drop', JSON.stringify(rule));
+    // Pieces already lined up move to the new time.
+    const next = nextDrop(rule), now = new Date().toISOString();
+    const rows = await env.DB.prepare('SELECT id, data FROM products').all(), stmts = [];
+    for (const r of rows.results || []) { const p = JSON.parse(r.data); if (!p.draft && p.liveAt && p.liveAt > now) { p.liveAt = next; stmts.push(env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), r.id)); } }
+    if (stmts.length) await env.DB.batch(stmts);
+    return json({ ok: true, rule, next });
+  }
+  if (path === '/api/admin/code') {
+    const code = clean(body.code, 24).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const kind = body.kind === 'flat' ? 'flat' : 'percent', value = num(body.value) || 0;
+    if (code.length < 3 || !value || (kind === 'percent' && value > 90)) return json({ error: 'details', message: 'Give the code a name of 3 or more letters and an amount. A percentage can be up to 90.' }, 400);
+    const old = await env.DB.prepare('SELECT data, at FROM codes WHERE code = ?').bind(code).first();
+    const data = { kind, value, min: num(body.min) || 0, limit: num(body.limit) || 0, ends: /^\d{4}-\d{2}-\d{2}$/.test(String(body.ends || '')) ? body.ends : '', note: clean(body.note, 80), paused: !!body.paused, used: old ? JSON.parse(old.data).used || 0 : 0 };
+    await env.DB.prepare('INSERT INTO codes (code, data, at) VALUES (?, ?, ?) ON CONFLICT(code) DO UPDATE SET data = excluded.data').bind(code, JSON.stringify(data), (old && old.at) || new Date().toISOString()).run();
+    return json({ ok: true });
+  }
+  if (path === '/api/admin/code-delete') { await env.DB.prepare('DELETE FROM codes WHERE code = ?').bind(String(body.code)).run(); return json({ ok: true }); }
+  if (path === '/api/admin/bundle') {
+    const n = num(body.n) || 2, pct = num(body.pct) || 0;
+    if (body.on && (n < 2 || pct < 1 || pct > 50)) return json({ error: 'details', message: 'Use 2 or more pieces, and between 1 and 50 percent.' }, 400);
+    await saveSetting(env, 'bundle', JSON.stringify({ on: !!body.on, n, pct })); return json({ ok: true });
+  }
+  if (path === '/api/admin/sourcing') {
+    const id = clean(body.id, 20) || 't' + Date.now().toString(36);
+    const data = { date: /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || '')) ? body.date : new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10), where: clean(body.where, 80), spent: num(body.spent) || 0, pieces: num(body.pieces) || 0, note: clean(body.note, 300), by: who(request) };
+    if (!data.where) return json({ error: 'details', message: 'Say where you sourced from.' }, 400);
+    await env.DB.prepare('INSERT INTO sourcing (id, data, at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data').bind(id, JSON.stringify(data), data.date).run();
+    return json({ ok: true, id });
+  }
+  if (path === '/api/admin/sourcing-delete') { await env.DB.prepare('DELETE FROM sourcing WHERE id = ?').bind(String(body.id)).run(); return json({ ok: true }); }
+  if (path === '/api/admin/test-alert') {
+    if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return json({ ok: false, message: 'Telegram is not set up yet.' });
+    const ok = await tg(env, 'Test from The Mountain Thrifters owner app. Order alerts will arrive here.');
+    return json({ ok, message: ok ? 'Sent. Check Telegram.' : 'Telegram did not accept it. Check the bot token and chat ID.' });
+  }
   if (path === '/api/admin/product-cost') {
     const row = await env.DB.prepare('SELECT data FROM products WHERE id = ?').bind(String(body.id)).first();
     if (!row) return json({ error: 'details', message: 'Only pieces added from this app can have a cost.' }, 400);
@@ -454,13 +661,20 @@ async function admin(request, env, path, ctx) {
       env.DB.prepare('DELETE FROM products WHERE id = ?').bind(String(body.id)),
       env.DB.prepare('DELETE FROM images WHERE product_id = ?').bind(String(body.id)),
       env.DB.prepare('DELETE FROM sold WHERE product_id = ?').bind(String(body.id)),
+      env.DB.prepare('DELETE FROM counters WHERE id = ?').bind(String(body.id)),
     ]);
     return json({ ok: true });
   }
   if (path === '/api/admin/order-status') {
-    const status = ['awaiting payment', 'paid', 'shipped', 'cancelled'].includes(body.status) ? body.status : '';
+    const status = ['awaiting payment', 'paid', 'shipped', 'delivered', 'cancelled'].includes(body.status) ? body.status : '';
     if (!status || !body.id) return json({ error: 'bad_request' }, 400);
-    const stmts = [env.DB.prepare('UPDATE orders SET status = ? WHERE id = ?').bind(status, String(body.id))];
+    const row = await env.DB.prepare('SELECT data FROM orders WHERE id = ?').bind(String(body.id)).first();
+    if (!row) return json({ error: 'bad_request' }, 400);
+    // Keep who did what, and the courier details once it ships.
+    const o = JSON.parse(row.data);
+    o.log = (o.log || []).concat([{ s: status, who: who(request), at: new Date().toISOString() }]).slice(-20);
+    if (status === 'shipped') { o.courier = clean(body.courier, 40); o.tracking = clean(body.tracking, 60); }
+    const stmts = [env.DB.prepare('UPDATE orders SET status = ?, data = ? WHERE id = ?').bind(status, JSON.stringify(o), String(body.id))];
     // Cancelling an order puts its pieces back on sale.
     if (status === 'cancelled') stmts.push(env.DB.prepare('DELETE FROM sold WHERE order_id = ?').bind(String(body.id)));
     await env.DB.batch(stmts);
@@ -709,7 +923,23 @@ export default {
       await init(env);
       if (url.pathname === '/api/products') return json(await allProducts(request, env, ctx));
       if (url.pathname === '/api/guides') return json({ guides: (await guideList(env, false)).map((g) => ({ slug: g.slug, title: g.title, summary: g.summary, at: g.at, html: guideHtml(g.body) })) });
-      if (url.pathname === '/api/config') return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env) });
+      if (url.pathname === '/api/config') { const b = await bundleRule(env); return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env), bundle: b.on ? { n: b.n, pct: b.pct } : null }); }
+      // Counts a look at a piece, or an add to a bag. No personal details are kept.
+      if (url.pathname === '/api/track' && request.method === 'POST') {
+        const b = await request.json().catch(() => ({}));
+        const kind = b.kind === 'bag' ? 'bag' : b.kind === 'view' ? 'view' : '', id = String(b.id || '');
+        if (kind && /^p[a-z0-9]{4,20}$/.test(id)) await env.DB.prepare('INSERT INTO counters (id, kind, n) VALUES (?, ?, 1) ON CONFLICT(id, kind) DO UPDATE SET n = n + 1').bind(id, kind).run();
+        return json({ ok: true });
+      }
+      // Checks a discount code against the bag before the order is placed.
+      if (url.pathname === '/api/quote' && request.method === 'POST') {
+        const b = await request.json().catch(() => ({}));
+        const ids = Array.isArray(b.items) ? [...new Set(b.items.map(String))].slice(0, 10) : [];
+        const picked = (await allProducts(request, env, ctx)).filter((p) => ids.includes(p.id) && !p.sold);
+        const subtotal = picked.reduce((t, p) => t + (Number(p.price) || 0), 0);
+        const deal = await moneyOff(env, b.code, subtotal, picked.length);
+        return json({ subtotal, off: deal.off, label: deal.label, code: deal.code, total: subtotal - deal.off, message: deal.error });
+      }
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);
       // A customer asking us to find something: either "one like this sold piece" or anything they describe.
@@ -780,9 +1010,25 @@ export default {
       return json({ error: 'server', message: 'Something went wrong on our side. Please try again.' }, 500);
     }
   },
-  // Weekly: renew the Instagram token and keep the new one in the database.
+  // Every ten minutes: post lined-up pieces whose drop time has come. Once a week: renew the Instagram token.
   async scheduled(event, env, ctx) {
     await init(env);
+    if (event.cron !== '0 3 * * 1') {
+      const now = new Date().toISOString();
+      const rows = await env.DB.prepare('SELECT id, data FROM products').all();
+      const live = (rows.results || []).map((r) => JSON.parse(r.data)).filter((p) => !p.draft && p.liveAt && p.liveAt <= now);
+      // Tell the owners once when a drop goes up.
+      const last = await setting(env, 'drop_seen');
+      const fresh = live.filter((p) => p.liveAt > (last || now));
+      if (!last) await saveSetting(env, 'drop_seen', now);
+      else if (fresh.length) { await saveSetting(env, 'drop_seen', now); await tg(env, 'Your drop is live: ' + fresh.length + ' piece' + (fresh.length > 1 ? 's' : '') + ' just went up on the shop. Send the message to your alerts list.'); }
+      for (const p of live.filter((x) => x.igPending).slice(0, 6)) {
+        p.igResult = await igPublish(SITE, env, p);
+        p.igPending = false; if (/^posted/.test(p.igResult)) p.igPosted = true;
+        await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), p.id).run();
+      }
+      return;
+    }
     const token = await igToken(env);
     if (!token || !token.startsWith('IG')) return; // Facebook-login Page tokens do not expire
     const res = await fetch('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=' + encodeURIComponent(token));

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Print · MT Owner</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#111;background:#fff;font-size:15px;line-height:1.45}
+.bar{background:#111312;color:#EDEBE4;padding:14px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar button,.bar a{min-height:44px;padding:0 16px;border:1px solid #EDEBE4;background:#EDEBE4;color:#111312;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.bar a{background:transparent;color:#EDEBE4}
+.bar span{flex:1;min-width:180px}
+main{padding:16px;max-width:800px;margin:0 auto}
+.tags{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.tag{border:1px dashed #777;padding:12px;break-inside:avoid;display:flex;flex-direction:column;gap:4px;min-height:250px}
+.tag .mt{font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
+.tag .nm{font-weight:600;font-size:15px;line-height:1.2}
+.tag .pr{font-size:26px;font-weight:700;line-height:1.1}
+.tag .was{text-decoration:line-through;color:#555;font-size:14px;font-weight:400;margin-left:6px}
+.tag .qr{margin-top:auto;display:flex;gap:10px;align-items:flex-end}
+.tag .qr svg{width:92px;height:92px;flex:none}
+.tag .qr small{font-size:11px;color:#333}
+.slip h1{font-size:22px;margin:0;letter-spacing:.06em;text-transform:uppercase}
+.slip h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin:22px 0 6px;color:#444}
+.slip .top{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #111;padding-bottom:12px}
+.slip .to{font-size:19px;line-height:1.35;border:2px solid #111;padding:14px}
+.slip table{width:100%;border-collapse:collapse}
+.slip td{padding:8px 0;border-bottom:1px solid #ccc}
+.slip td:last-child{text-align:right;white-space:nowrap}
+.slip .foot{display:flex;gap:16px;align-items:center;margin-top:26px}
+.slip .foot svg{width:96px;height:96px;flex:none}
+@media print{.bar{display:none}main{padding:0;max-width:none}.tags{grid-template-columns:repeat(3,1fr);gap:6px}}
+</style>
+</head>
+<body>
+<div class="bar"><span id="what">Loading…</span><button type="button" onclick="window.print()">Print</button><a href="/admin.html">Back to the app</a></div>
+<main id="out"></main>
+<script src="/qrcode.js"></script>
+<script>
+(function(){
+var KEY='';try{KEY=localStorage.getItem('mt_admin_key')||'';}catch(e){}
+var SHOP='https://mountainthrifters.com',out=document.getElementById('out'),what=document.getElementById('what');
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function rs(n){return 'Rs '+Math.round(Number(n||0)).toLocaleString('en-IN');}
+function qr(text){var q=qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:4,margin:0,scalable:true});}
+function api(p){return fetch('/api/admin/'+p,{headers:{'x-admin-key':KEY}}).then(function(r){if(!r.ok)throw new Error(r.status===403?'Sign in to the owner app on this device first.':'Could not load. Try again.');return r.json();});}
+var q=new URLSearchParams(location.search);
+if(!KEY){what.textContent='Sign in to the owner app on this device first.';return;}
+if(q.get('order')){
+  Promise.all([api('orders'),fetch('/api/config').then(function(r){return r.json();})]).then(function(r){
+    var o=r[0].orders.filter(function(x){return x.id===q.get('order');})[0];
+    if(!o){what.textContent='That order was not found.';return;}
+    what.textContent='Packing slip for order '+o.id;
+    out.innerHTML='<div class="slip"><div class="top"><div><h1>The Mountain Thrifters</h1><div>Manali, Himachal Pradesh · WhatsApp +'+esc(r[1].whatsapp||'')+'</div></div><div style="text-align:right"><b>Order '+esc(o.id)+'</b><br>'+new Date(o.at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})+'</div></div>'+
+      '<h2>Deliver to</h2><div class="to"><b>'+esc(o.name)+'</b><br>'+esc(o.address)+'<br>'+esc([o.city,o.pincode].filter(Boolean).join(' '))+'<br>Phone: '+esc(o.phone)+'</div>'+
+      '<h2>In this parcel</h2><table>'+(o.items||[]).map(function(i){return '<tr><td>'+esc(i.name)+(i.size?' (Size '+esc(i.size)+')':'')+'</td><td>'+rs(i.price)+'</td></tr>';}).join('')+
+      (o.discount?'<tr><td>'+esc(o.discountLabel||'Discount')+'</td><td>minus '+rs(o.discount)+'</td></tr>':'')+'<tr><td><b>Total paid</b></td><td><b>'+rs(o.total)+'</b></td></tr></table>'+
+      '<div class="foot">'+qr(SHOP+'/shop')+'<div><b>Thanks for buying from us.</b><br>Packed by hand in Manali. Tag @mountain_thrifters when you take it out, we love seeing where the gear ends up.<br>New pieces every week at mountainthrifters.com</div></div></div>';
+  }).catch(function(e){what.textContent=e.message;});
+}else{
+  api('products').then(function(d){
+    var ids=(q.get('tags')||'all'),list=d.products.filter(function(p){return !p.sample&&!p.sold&&!p.draft&&/^p[a-z0-9]+$/.test(p.id);});
+    if(ids!=='all'){var want=ids.split(',');list=d.products.filter(function(p){return want.indexOf(p.id)>-1;});}
+    what.textContent=list.length+' price tag'+(list.length===1?'':'s')+'. Print, cut along the dashed lines.';
+    out.innerHTML=list.length?'<div class="tags">'+list.map(function(p){
+      return '<div class="tag"><div class="mt">The Mountain Thrifters</div><div class="nm">'+esc((p.brand?p.brand+' ':'')+p.name)+'</div><div>'+esc([p.size?'Size '+p.size:'',p.condition].filter(Boolean).join(' · '))+'</div>'+
+        '<div class="pr">'+rs(p.price)+(p.was?'<span class="was">'+rs(p.was)+'</span>':'')+'</div><div class="qr">'+qr(SHOP+'/p/'+p.id)+'<small>Scan to see it, pay by UPI or have it shipped.</small></div></div>';}).join('')+'</div>':'<p>No pieces to print yet.</p>';
+  }).catch(function(e){what.textContent=e.message;});
+}
+})();
+</script>
+</body>
+</html>

@@ -112,6 +112,14 @@ details.ph>summary::-webkit-details-marker{display:none}
 .task li{margin-bottom:6px}
 .task textarea{min-height:56px;font-size:14px}
 .goal{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--s2)}
+.todo{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--s1);border:0;padding:14px 16px;cursor:pointer;margin-bottom:8px;font-size:16px}
+.todo b{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--pop);color:var(--bg);font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:17px}
+.todo span{flex:1}.todo i{font-style:normal;color:var(--dim);font-size:20px}
+.dropbox{display:block;width:100%;text-align:left;background:var(--s1);border:0;border-left:3px solid var(--pop);padding:16px;cursor:pointer;margin-bottom:8px}
+.dropbox .cd{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:44px;line-height:1;margin:4px 0 6px}
+.strike{text-decoration:line-through;color:var(--dim)}
+.stk a.sm,.acts a.sm{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
+.acts a.sm.pop{color:var(--bg)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -136,6 +144,14 @@ details.ph>summary::-webkit-details-marker{display:none}
 
 <section id="t-more" hidden>
 <h1>More</h1>
+<div class="box"><label for="whoami" style="margin-top:0">Who uses this phone?</label><div class="addrow"><input id="whoami" maxlength="20" placeholder="Your first name"><button class="sm" id="whosave" type="button">Save</button></div><p class="dim" id="whomsg" style="margin:6px 0 0">Your name is added to the pieces you list and the orders you update, so you both know who did what.</p></div>
+<div class="grp">Selling</div>
+<button class="tile" data-go="drop"><span>The weekly drop<small>Line pieces up to go live together</small></span><span class="go">›</span></button>
+<button class="tile" data-go="codes"><span>Discount codes and offers<small>Codes for hostels, creators and regulars</small></span><span class="go">›</span></button>
+<button class="tile" data-go="people"><span>Customers<small>Everyone who has ordered, and repeat buyers</small></span><span class="go">›</span></button>
+<a class="tile" href="/print.html?tags=all" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><span>Print price tags<small>A QR tag for every piece on sale</small></span><span class="go">›</span></a>
+<div class="grp">Buying stock</div>
+<button class="tile" data-go="source"><span>Sourcing log<small>Where you bought, what you spent, what it made</small></span><span class="go">›</span></button>
 <div class="grp">Grow the shop</div>
 <button class="tile" data-go="plan"><span>Marketing plan<small>The step-by-step checklist</small></span><span class="go">›</span></button>
 <a class="tile" href="/launch.html" style="text-decoration:none;color:inherit"><span>Launch planner<small>Countdown, tasks and ready-made captions</small></span><span class="go">›</span></a>
@@ -146,6 +162,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 <div class="grp">Shop setup</div>
 <button class="tile" data-go="cats"><span>Categories<small>Add, rename or delete</small></span><span class="go">›</span></button>
 <button class="tile" data-go="settings"><span>Line at the top of the shop<small>The drop announcement</small></span><span class="go">›</span></button>
+<button class="tile" data-go="phone"><span>Order alerts on your phone<small id="phonestate">Get a ping for every order</small></span><span class="go">›</span></button>
 <a class="tile" href="/" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><span>View the shop<small>Opens the public site</small></span><span class="go">›</span></a>
 <button class="tile" id="signout"><span>Sign out on this device</span><span class="go">›</span></button>
 </section>
@@ -155,9 +172,38 @@ details.ph>summary::-webkit-details-marker{display:none}
 <div class="box"><label for="bn" style="margin-top:0">Line across the top of the shop</label><input id="bn" maxlength="140"><p class="dim" style="margin:6px 0 0">"Sign up for alerts" is added after it and opens WhatsApp. Leave it empty to hide the line.</p><div class="acts"><button class="sm pop" id="bnsave" type="button">Save</button><span class="dim" id="bnmsg" role="status" style="align-self:center"></span></div></div>
 </section>
 
+<section id="t-drop" hidden>
+<h1>The drop</h1>
+<div id="drop" class="mute">Loading…</div>
+</section>
+
+<section id="t-codes" hidden>
+<h1>Codes and offers</h1>
+<div id="codes" class="mute">Loading…</div>
+</section>
+
+<section id="t-people" hidden>
+<h1>Customers</h1>
+<div id="people" class="mute">Loading…</div>
+</section>
+
+<section id="t-source" hidden>
+<h1>Sourcing log</h1>
+<div id="source" class="mute">Loading…</div>
+</section>
+
+<section id="t-phone" hidden>
+<h1>Order alerts</h1>
+<div id="phone" class="mute">Loading…</div>
+</section>
+
 <section id="t-add" hidden>
-<h1>Add stock</h1>
+<h1 id="a-h1">Add stock</h1>
+<button class="link" id="a-cancel" type="button" hidden>Cancel, go back to Stock</button>
 <p class="msg" id="a-top" role="status" style="margin:0 0 6px;min-height:0"></p>
+<div id="a-match"></div>
+<div id="e-info" hidden></div>
+<div id="a-bulkbox"><button class="sm" id="a-bulk" type="button">Add many at once</button><input id="bulkfile" type="file" accept="image/*" multiple hidden><p class="dim" style="margin:6px 0 0">Pick a photo of each piece. Each one is saved as a draft for you to finish later.</p></div>
 <div class="stp"><b>1</b> Photos</div>
 <div class="shots" id="shots"></div>
 <input id="file" type="file" accept="image/*" multiple hidden>
@@ -190,10 +236,14 @@ details.ph>summary::-webkit-details-marker{display:none}
 <div><label for="a-cost">What you paid (Rs)</label><input id="a-cost" inputmode="numeric"></div></div>
 <p class="dim" style="margin:6px 0 0">What you paid stays private. It is only used for your profit numbers.</p>
 <p class="dim good" id="a-profit" style="margin:4px 0 0"></p>
+<label for="a-src">Where it came from (optional)</label><select id="a-src"><option value="">Not set</option></select>
 
 <div class="stp"><b>6</b> Finish</div>
 <label for="a-desc" style="margin-top:0">Description (optional)</label><textarea id="a-desc" placeholder="Fit, flaws, anything worth knowing"></textarea>
-<label class="tog" for="a-ig"><span>Also post to Instagram</span><input id="a-ig" type="checkbox"></label>
+<div class="fl">When does it go on sale?</div>
+<div class="seg" id="a-when"><button type="button" class="on" data-w="now">Now</button><button type="button" data-w="drop">Next drop</button><button type="button" data-w="draft">Save as draft</button></div>
+<p class="dim" id="a-whenhint" style="margin:6px 0 0"></p>
+<label class="tog" for="a-ig" id="a-igrow"><span>Also post to Instagram</span><input id="a-ig" type="checkbox"></label>
 <p class="dim" id="igstate" style="margin:6px 0 0"></p>
 <button class="btn" id="a-go" type="button">Put it live</button>
 <p class="msg" id="a-msg" role="status"></p>
@@ -201,6 +251,8 @@ details.ph>summary::-webkit-details-marker{display:none}
 
 <section id="t-orders" hidden><h1>Inbox</h1><div class="sub3" data-sub="orders"></div><div id="orders" class="mute">Loading…</div></section>
 <section id="t-stock" hidden><h1>Stock</h1>
+<div id="s-flash"></div>
+<div class="pick" id="sfilter"></div>
 <div id="stock" class="mute">Loading…</div></section>
 
 <section id="t-cats" hidden>
@@ -267,16 +319,17 @@ var $=function(id){return document.getElementById(id);};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function rs(n){return 'Rs '+Math.round(Number(n||0)).toLocaleString('en-IN');}
 var KEY='';try{KEY=localStorage.getItem('mt_admin_key')||'';}catch(e){}
-var cats=[],shots=[],statData=null,days=30;
+var WHO='';try{WHO=(localStorage.getItem('mt_who')||'').replace(/[^\x20-\x7E]/g,'');}catch(e){}
+var cats=[],shots=[],statData=null,days=30,editId='',stockList=[],sFilter='all',trips=[],dropInfo=null,SHOP='https://mountainthrifters.com';
 
 function api(path,body){
-  var o={headers:{'x-admin-key':KEY}};
+  var o={headers:{'x-admin-key':KEY,'x-who':WHO}};
   if(body){o.method='POST';o.headers['content-type']='application/json';o.body=JSON.stringify(body);}
   return fetch('/api/admin/'+path,o).then(function(r){return r.json().then(function(j){if(r.status===403){signOut();throw new Error('Wrong admin key.');}if(!r.ok)throw new Error(j.message||'That did not work. Try again.');return j;});});
 }
 function signOut(){try{localStorage.removeItem('mt_admin_key');}catch(e){}KEY='';show('');}
-var ALL=['home','add','orders','stock','more','cats','stats','plan','guides','alerts','offers','reqs','settings'];
-var PARENT={offers:'orders',reqs:'orders',cats:'more',stats:'more',plan:'more',guides:'more',alerts:'more',settings:'more'};
+var ALL=['home','add','orders','stock','more','cats','stats','plan','guides','alerts','offers','reqs','settings','drop','codes','people','source','phone'];
+var PARENT={offers:'orders',reqs:'orders',cats:'more',stats:'more',plan:'more',guides:'more',alerts:'more',settings:'more',drop:'more',codes:'more',people:'more',source:'more',phone:'more'};
 var counts={orders:0,offers:0,reqs:0};
 function show(tab){
   $('login').hidden=!!KEY;$('tabs').hidden=!KEY;
@@ -296,44 +349,71 @@ function show(tab){
   if(tab==='alerts')loadAlerts();
   if(tab==='offers')loadOffers();
   if(tab==='reqs')loadReqs();
+  if(tab==='drop')loadDrop();
+  if(tab==='codes')loadCodes();
+  if(tab==='people')loadPeople();
+  if(tab==='source')loadSource();
+  if(tab==='phone')loadPhone();
+  if(tab==='add')whenHint();
   window.scrollTo(0,0);
   var h=$('t-'+tab).querySelector('h1');if(h){h.setAttribute('tabindex','-1');h.focus({preventScroll:true});}
 }
 function drawSub(tab){document.querySelectorAll('.sub3').forEach(function(el){
   el.innerHTML=[['orders','Orders'],['offers','Selling to us'],['reqs','Requests']].map(function(x){return '<button type="button" data-go="'+x[0]+'" class="'+(x[0]===tab?'on':'')+'" aria-pressed="'+(x[0]===tab)+'">'+x[1]+(counts[x[0]]?' ('+counts[x[0]]+')':'')+'</button>';}).join('');});}
 function badge(){var n=counts.orders+counts.offers+counts.reqs,el=$('nb-orders');el.hidden=!n;el.textContent=n;}
-document.addEventListener('click',function(e){var g=e.target.closest('[data-go]');if(g)show(g.getAttribute('data-go'));});
+document.addEventListener('click',function(e){var g=e.target.closest('[data-go]');if(!g)return;var v=g.getAttribute('data-go').split(':');if(v[0]==='add'&&editId)clearEdit();if(v[1])sFilter=v[1];show(v[0]);});
 $('backbar').onclick=function(){show('more');};
 $('signout').onclick=function(){if(confirm('Sign out of the owner app on this device?'))signOut();};
 // ----- home: what needs doing today -----
+function ist(iso){return new Date(new Date(iso).getTime()+330*60000);} // India time, read with getUTC*
+function cd(iso){var m=Math.max(0,Math.floor((new Date(iso)-Date.now())/60000)),d=Math.floor(m/1440),h=Math.floor(m%1440/60);return (d?d+'d ':'')+('0'+h).slice(-2)+'h '+('0'+m%60).slice(-2)+'m';}
+function dropWhen(iso){return new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',weekday:'long',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});}
+function queued(list){var now=new Date().toISOString();return list.filter(function(p){return !p.draft&&p.liveAt&&p.liveAt>now&&!p.sold;});}
+function daysOld(p){return p.listedAt?Math.floor((Date.now()-new Date(p.listedAt))/864e5):0;}
+function sitting(list){return list.filter(function(p){return !p.sold&&!p.sample&&!p.hidden&&/^p[a-z0-9]+$/.test(p.id)&&daysOld(p)>=30;});}
+setInterval(function(){document.querySelectorAll('[data-cd]').forEach(function(el){el.textContent=cd(el.getAttribute('data-cd'));});},30000);
 function loadHome(){
-  Promise.all([api('orders'),api('offers'),api('requests'),api('alerts'),api('products')]).then(function(r){
+  Promise.all([api('orders'),api('offers'),api('requests'),api('alerts'),api('products'),api('drop')]).then(function(r){
     var o=r[0].orders,pay=o.filter(function(x){return x.status==='awaiting payment';}),ship=o.filter(function(x){return x.status==='paid';});
     var off=r[1].offers.filter(function(x){return x.status==='new';}),rq=r[2].requests.filter(function(x){return x.status==='open';});
-    var live=r[4].products.filter(function(p){return !p.sold&&!p.sample;}),week=r[3].people.filter(function(p){return Date.now()-new Date(p.at)<7*864e5;}).length;
+    var all=r[4].products;stockList=all;dropInfo=r[5];
+    var live=all.filter(function(p){return !p.sold&&!p.sample&&!p.hidden;}),week=r[3].people.filter(function(p){return Date.now()-new Date(p.at)<7*864e5;}).length;
+    var drafts=all.filter(function(p){return p.draft;}),q=queued(all),old=sitting(all);
     counts={orders:pay.length+ship.length,offers:off.length,reqs:rq.length};badge();
-    var t=function(n,label,sub,go,hot){return '<button class="tile'+(hot&&n?' hot':'')+'" data-go="'+go+'"><span style="display:flex;align-items:center;gap:14px"><b>'+n+'</b><span>'+label+(sub?'<small>'+sub+'</small>':'')+'</span></span><span class="go">›</span></button>';};
-    var todo=pay.length+ship.length+off.length+rq.length;
+    // Money in: orders you have confirmed as paid.
+    var now=ist(new Date().toISOString()),today=now.toISOString().slice(0,10),mon=new Date(now);mon.setUTCDate(mon.getUTCDate()-(now.getUTCDay()+6)%7);var monday=mon.toISOString().slice(0,10);
+    var paid=o.filter(function(x){return ['paid','shipped','delivered'].indexOf(x.status)>-1;}),dayRs=0,weekRs=0;
+    paid.forEach(function(x){var d=ist(x.at).toISOString().slice(0,10);if(d===today)dayRs+=x.total;if(d>=monday)weekRs+=x.total;});
+    var todo=[];
+    pay.slice(0,4).forEach(function(x){todo.push(['Confirm payment, order '+x.id+' ('+rs(x.total)+')','orders']);});
+    if(pay.length>4)todo.push([(pay.length-4)+' more orders waiting for payment','orders']);
+    if(ship.length)todo.push(['Pack and ship '+ship.length+' order'+(ship.length>1?'s':''),'orders']);
+    if(off.length)todo.push(['Reply to '+off.length+' gear offer'+(off.length>1?'s':''),'offers']);
+    if(rq.length)todo.push([rq.length+' '+(rq.length>1?'people are':'person is')+' waiting for gear you said you would look for','reqs']);
+    if(drafts.length)todo.push(['Finish '+drafts.length+' draft'+(drafts.length>1?'s':''),'stock:draft']);
+    var kpi=function(v,l){return '<div class="kpi"><b>'+v+'</b><span>'+l+'</span></div>';};
+    var t=function(n,label,sub,go){return '<button class="tile" data-go="'+go+'"><span style="display:flex;align-items:center;gap:14px"><b>'+n+'</b><span>'+label+(sub?'<small>'+sub+'</small>':'')+'</span></span><span class="go">›</span></button>';};
     $('home').className='';
-    $('home').innerHTML='<p class="mute" style="margin-top:0">'+(todo?'These need you:':'Nothing is waiting on you right now.')+'</p>'+
-      t(pay.length,'Orders waiting for payment','Check your UPI, then tap Payment received','orders',1)+
-      t(ship.length,'Orders to ship','Paid and ready to pack','orders',1)+
-      t(off.length,'New gear offered to you','People who want to sell, with photos','offers',1)+
-      t(rq.length,'Open requests','Gear customers asked you to find','reqs',1)+
+    $('home').innerHTML=(WHO?'<p class="mute" style="margin-top:0">Hi '+esc(WHO)+'.</p>':'')+
+      '<button class="dropbox" data-go="drop"><span class="tag">Next drop</span><div class="cd" data-cd="'+esc(dropInfo.next)+'">'+cd(dropInfo.next)+'</div><span class="mute">'+esc(dropWhen(dropInfo.next))+' · '+q.length+' piece'+(q.length===1?'':'s')+' lined up · '+r[3].people.length+' on the list</span></button>'+
+      '<div class="kpis">'+kpi(rs(dayRs),'Sold today')+kpi(rs(weekRs),'This week')+'</div>'+
+      '<div class="grp">Do these next</div>'+(todo.length?todo.map(function(x,i){return '<button class="todo" data-go="'+x[1]+'"><b>'+(i+1)+'</b><span>'+esc(x[0])+'</span><i>›</i></button>';}).join(''):'<p class="mute">Nothing is waiting on you right now.</p>')+
+      (old.length?'<div class="grp">Heads up</div><div class="box"><div>'+old.length+' piece'+(old.length>1?'s have':' has')+' sat unsold for 30 days or more.</div><div class="acts"><button class="sm" data-go="stock:old">Drop '+(old.length>1?'their':'its')+' price</button></div></div>':'')+
       '<div class="grp">The shop</div>'+
-      t(live.length,'Pieces on sale',r[4].products.some(function(p){return p.sample;})?'Sample pieces are still showing':'','stock',0)+
-      t(r[3].people.length,'On the drop alerts list',week?week+' joined this week':'','alerts',0)+
-      '<div class="grp">Quick actions</div><button class="btn pop" data-go="add" style="margin-top:0">Add a new piece</button>'+
-      '<div class="box" style="margin-top:10px"><div class="fl" style="margin-top:0">Top of the shop says</div><div>'+esc($('bn').value||'Nothing right now')+'</div><div class="acts"><button class="sm" data-go="settings">Change it</button></div></div>';
+      t(live.length,'Pieces on sale',all.some(function(p){return p.sample;})?'Sample pieces are still showing':'','stock:live')+
+      t(r[3].people.length,'On the drop alerts list',week?week+' joined this week':'','alerts')+
+      '<button class="btn pop" data-go="add" style="margin-top:8px">Add a new piece</button>';
   }).catch(function(e){$('home').textContent=e.message;});
 }
 function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();$('bn').value=c.notice||'';});}
 $('bnsave').onclick=function(){api('banner',{text:$('bn').value}).then(function(){$('bnmsg').textContent='Saved.';}).catch(function(e){$('bnmsg').textContent=e.message;});};
 $('signin').onclick=function(){
   KEY=$('key').value.trim();
-  api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('home');loadBrands();igState();}).catch(function(e){$('loginmsg').textContent=e.message;});
+  api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('home');loadBrands();igState();loadTrips();}).catch(function(e){$('loginmsg').textContent=e.message;});
 };
-$('tabs').onclick=function(e){var b=e.target.closest('button');if(b)show(b.getAttribute('data-t'));};
+$('tabs').onclick=function(e){var b=e.target.closest('button');if(!b)return;if(b.getAttribute('data-t')==='add'&&editId)clearEdit();show(b.getAttribute('data-t'));};
+$('whoami').value=WHO;
+$('whosave').onclick=function(){WHO=$('whoami').value.trim().replace(/[^\x20-\x7E]/g,'').slice(0,20);try{localStorage.setItem('mt_who',WHO);}catch(e){}$('whomsg').textContent=WHO?'Saved. This phone is '+WHO+'.':'Cleared.';};
 
 // ----- add stock -----
 var SIZES={Clothing:['XS','S','M','L','XL','XXL'],Footwear:['UK 5','UK 6','UK 7','UK 8','UK 9','UK 10','UK 11'],Accessories:['S','M','L','One size'],
@@ -432,70 +512,259 @@ $('file').onchange=function(){
 };
 $('a-cond').onclick=function(e){var b=e.target.closest('button');if(!b)return;[].forEach.call(this.children,function(x){x.classList.toggle('on',x===b);});mem('cond',b.textContent);};
 function say(id,text,kind){var m=$(id);m.textContent=text;m.className='msg '+(kind||'');}
+// ----- when it goes on sale, editing, and adding many -----
+function whenVal(){return $('a-when').querySelector('.on').getAttribute('data-w');}
+function setWhen(w){[].forEach.call($('a-when').children,function(x){x.classList.toggle('on',x.getAttribute('data-w')===w);});whenHint();}
+function goLabel(){var w=whenVal();return editId?'Save changes':w==='drop'?'Line it up for the drop':w==='draft'?'Save as a draft':'Put it live';}
+function whenHint(){
+  var w=whenVal(),el=$('a-whenhint');$('a-go').textContent=goLabel();
+  if(w==='draft'){el.textContent='Hidden from the shop until you finish it. Only a photo is needed.';return;}
+  if(w==='now'){el.textContent='Shoppers can see and buy it straight away.';return;}
+  el.textContent='Hidden until the drop, then it goes on sale by itself.';
+  (dropInfo?Promise.resolve(dropInfo):api('drop')).then(function(d){dropInfo=d;if(whenVal()==='drop')el.textContent='Hidden until '+dropWhen(d.next)+', then it goes on sale by itself. Instagram posts within ten minutes of that.';}).catch(function(){});
+}
+$('a-when').onclick=function(e){var b=e.target.closest('button');if(b)setWhen(b.getAttribute('data-w'));};
+function fillSrc(v){$('a-src').innerHTML='<option value="">Not set</option>'+trips.map(function(t){return '<option value="'+esc(t.id)+'">'+esc(t.date+' · '+t.where)+'</option>';}).join('');$('a-src').value=v||'';}
+function loadTrips(){return api('sourcing').then(function(d){trips=d.trips;fillSrc($('a-src').value);}).catch(function(){});}
+function clearForm(){shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc','a-weight','a-tlink'].forEach(function(i){$(i).value='';});wpSel='';techSel=[];$('a-tested').checked=false;$('a-src').value='';drawTech();profitHint();fillSubs();}
+function clearEdit(){editId='';clearForm();$('a-h1').textContent='Add stock';$('a-cancel').hidden=true;$('e-info').hidden=true;$('a-bulkbox').hidden=false;$('a-igrow').hidden=false;$('a-ig').checked=mem('ig')==='1';$('a-match').innerHTML='';say('a-msg','');setWhen('now');}
+$('a-cancel').onclick=function(){clearEdit();show('stock');};
+function startEdit(p){
+  editId=p.id;show('add');$('a-h1').textContent='Edit piece';$('a-cancel').hidden=false;$('a-bulkbox').hidden=true;say('a-top','');say('a-msg','');$('a-match').innerHTML='';
+  shots=(p.photos&&p.photos.length?p.photos:[p.photo]).filter(Boolean).slice();drawShots();
+  if(p.category&&cats.some(function(c){return c.name===p.category;})){$('a-cat').value=p.category;fillCats();}
+  if(p.sub){$('a-sub').value=p.sub;}
+  $('a-brand').value=p.brand||'';$('a-name').value=p.name==='Draft piece'?'':p.name||'';$('a-size').value=p.size||'';fillSubs();drawBrands();
+  $('a-gender').value=p.gender||'Everyone';drawGender();
+  if(p.condition)[].forEach.call($('a-cond').children,function(x){x.classList.toggle('on',x.textContent===p.condition);});
+  wpSel=p.waterproof||'';techSel=(p.tech||[]).slice();drawTech();$('a-weight').value=p.weight||'';$('a-tlink').value=p.testedLink||'';$('a-tested').checked=!!p.tested;
+  $('a-price').value=p.price||'';$('a-cost').value=p.cost!=null?p.cost:'';profitHint();fillSrc(p.source);$('a-desc').value=p.description||'';
+  $('a-igrow').hidden=!!p.igPosted;$('a-ig').checked=!!p.igPending;
+  setWhen(p.draft?'draft':p.hidden?'drop':'now');
+  var live=!p.hidden&&!p.sold;
+  $('e-info').hidden=false;
+  $('e-info').innerHTML='<div class="kpis">'+'<div class="kpi"><b>'+(p.views||0)+'</b><span>Looks</span></div><div class="kpi"><b>'+(p.bags||0)+'</b><span>Added to a bag</span></div></div>'+
+    '<p class="dim" style="margin:8px 0 0">'+(p.sold?'Sold.':p.draft?'Draft, not on the shop yet.':p.hidden?'Lined up for '+esc(dropWhen(p.liveAt))+'.':'On sale for '+daysOld(p)+' day'+(daysOld(p)===1?'':'s')+'.')+(p.by?' Added by '+esc(p.by)+'.':'')+(p.was?' Was '+rs(p.was)+'.':'')+'</p>'+
+    '<div class="acts" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">'+(live?'<button class="sm" type="button" data-e="cut">Drop price 10%</button><button class="sm" type="button" data-e="share">Share link</button>':'')+
+    '<a class="sm" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="/print.html?tags='+encodeURIComponent(p.id)+'" target="_blank" rel="noopener">Print tag with QR</a>'+
+    (live?'<button class="sm" type="button" data-e="who">Who asked for this?</button><button class="sm" type="button" data-e="sold">Mark sold</button>':'')+'</div><p class="dim" id="e-msg" role="status" style="margin:8px 0 0"></p>';
+}
+function matchHtml(list,id,name){
+  if(!list||!list.length)return '';
+  return '<div class="box" style="border-left:3px solid var(--pop)"><div><b>'+list.length+' '+(list.length>1?'people':'person')+' asked for something like this.</b> Message them first.</div>'+list.slice(0,8).map(function(m){
+    return '<div style="margin-top:12px">'+esc(m.name)+': '+esc(m.what)+(m.size?' <span class="dim">(size '+esc(m.size)+(m.sizeFits?'':', not this size')+')</span>':'')+'<div class="acts" style="display:flex;margin-top:6px"><a class="sm pop" style="display:inline-flex;align-items:center;text-decoration:none" href="https://wa.me/91'+esc(m.phone)+'?text='+encodeURIComponent('Hi '+String(m.name).split(' ')[0]+', this is The Mountain Thrifters. You asked us to look for: '+m.what+'. We just got this in: '+SHOP+'/p/'+id)+'" target="_blank" rel="noopener">Tell '+esc(String(m.name).split(' ')[0])+' on WhatsApp</a></div></div>';}).join('')+'</div>';
+}
+$('e-info').onclick=function(e){
+  var b=e.target.closest('[data-e]');if(!b)return;var a=b.getAttribute('data-e'),m=$('e-msg');
+  if(a==='cut'){var p=parseInt($('a-price').value,10)||0,n=Math.max(10,Math.round(p*0.9/10)*10);$('a-price').value=n;profitHint();m.textContent='Price changed from '+rs(p)+' to '+rs(n)+'. Tap Save changes at the bottom. The old price shows crossed out on the shop.';}
+  if(a==='share'){var url=SHOP+'/p/'+editId;if(navigator.share)navigator.share({title:$('a-name').value,url:url}).catch(function(){});else (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(function(){m.textContent='Link copied.';},function(){m.textContent=url;});}
+  if(a==='who'){m.textContent='Looking…';api('matches?id='+encodeURIComponent(editId)).then(function(d){m.textContent=d.matches.length?'':'Nobody has asked for something like this yet.';$('a-match').innerHTML=matchHtml(d.matches,editId);});}
+  if(a==='sold'){if(!confirm('Mark this piece as sold?'))return;api('sold',{productId:editId,sold:true}).then(function(){clearEdit();show('stock');}).catch(function(x){m.textContent=x.message;});}
+};
+$('a-bulk').onclick=function(){$('bulkfile').click();};
+$('bulkfile').onchange=function(){
+  var files=[].slice.call(this.files,0,30);this.value='';if(!files.length)return;
+  var i=0,ok=0;$('a-bulk').disabled=true;
+  (function next(){
+    if(i>=files.length){$('a-bulk').disabled=false;say('a-top',ok+' draft'+(ok===1?'':'s')+' saved. Open each one to add the details.','good');sFilter='draft';show('stock');return;}
+    say('a-top','Saving photo '+(i+1)+' of '+files.length+'…');
+    shrink(files[i]).then(function(d){return api('product',{images:[d],when:'draft',n:i});}).then(function(){ok++;},function(){}).then(function(){i++;next();});
+  })();
+};
 $('a-go').onclick=function(){
-  var btn=this;
+  var btn=this,when=whenVal(),wasEdit=editId;
   var body={images:shots,name:$('a-name').value,brand:$('a-brand').value,price:$('a-price').value,cost:$('a-cost').value,gender:$('a-gender').value,
     waterproof:wpSel,tech:techSel.slice(),weight:$('a-weight').value,tested:$('a-tested').checked,testedLink:(function(v){v=v.trim();return v&&!/^https?:/.test(v)?'https://'+v:v;})($('a-tlink').value),
-    category:$('a-cat').value,sub:$('a-sub').value,size:$('a-size').value,condition:$('a-cond').querySelector('.on').textContent,description:$('a-desc').value,postToInstagram:$('a-ig').checked};
-  var need=[[!shots.length,'shots','Add at least one photo.'],[!body.name.trim(),'a-name','Give it a name.'],[!parseInt(body.price,10),'a-price','Add the selling price.']];
+    category:$('a-cat').value,sub:$('a-sub').value,size:$('a-size').value,condition:$('a-cond').querySelector('.on').textContent,description:$('a-desc').value,postToInstagram:$('a-ig').checked,when:when,source:$('a-src').value};
+  if(editId){body.id=editId;body.photos=shots;delete body.images;if($('a-igrow').hidden)delete body.postToInstagram;}
+  var need=[[!shots.length,'shots','Add at least one photo.'],[when!=='draft'&&!body.name.trim(),'a-name','Give it a name.'],[when!=='draft'&&!parseInt(body.price,10),'a-price','Add the selling price.']];
   document.querySelectorAll('.miss').forEach(function(x){x.classList.remove('miss');});
   for(var i=0;i<need.length;i++)if(need[i][0]){var el=$(need[i][1]);el.classList.add('miss');el.scrollIntoView({block:'center'});say('a-msg',need[i][2],'bad');return;}
-  btn.disabled=true;btn.textContent='Uploading…';say('a-msg','');
-  (body.postToInstagram?igSafe(shots[0]):Promise.resolve('')).then(function(sq){body.igImage=sq;return api('product',body);}).then(function(r){
+  btn.disabled=true;btn.textContent='Saving…';say('a-msg','');
+  (body.postToInstagram?igSafe(shots[0]):Promise.resolve('')).then(function(sq){if(sq)body.igImage=sq;return api(wasEdit?'product-update':'product',body);}).then(function(r){
     var ig=r.instagram==='posted'?' Posted to Instagram too.':r.instagram==='posted, and on Facebook'?' Posted to Instagram and Facebook too.':(r.instagram&&r.instagram!=='not requested'?' Instagram: '+r.instagram+'.':'');
-    var okIg=!body.postToInstagram||/^posted/.test(r.instagram||'');
-    say('a-msg','Live on the shop.'+ig,okIg?'good':'bad');say('a-top','Last piece: live on the shop.'+ig,okIg?'good':'bad');
-    shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc','a-weight','a-tlink'].forEach(function(i){$(i).value='';});wpSel='';techSel=[];$('a-tested').checked=false;drawTech();profitHint();fillSubs();loadBrands();window.scrollTo(0,0);
-  }).catch(function(e){say('a-msg',e.message,'bad');}).then(function(){btn.disabled=false;btn.textContent='Put it live';});
+    var okIg=!body.postToInstagram||/^(posted|will post)/.test(r.instagram||'');
+    var what=when==='draft'?'Saved as a draft.':when==='drop'&&r.liveAt?'Lined up for '+dropWhen(r.liveAt)+'.':wasEdit?'Saved.':'Live on the shop.';
+    var mh=matchHtml(r.matches,r.id);
+    if(wasEdit){clearEdit();$('s-flash').innerHTML='<p class="msg '+(okIg?'good':'bad')+'" style="margin:0 0 12px">'+esc(what+ig)+'</p>'+mh;show('stock');return;}
+    say('a-top','Last piece: '+what.charAt(0).toLowerCase()+what.slice(1)+ig,okIg?'good':'bad');
+    clearForm();$('a-match').innerHTML=mh;setWhen(when);loadBrands();window.scrollTo(0,0);
+  }).catch(function(e){say('a-msg',e.message,'bad');}).then(function(){btn.disabled=false;btn.textContent=goLabel();});
 };
 
 // ----- orders -----
+var COURIERS=['India Post','Delhivery','DTDC','Blue Dart','Other'],shipOpen='';
+function trackMsg(o){return 'Hi '+String(o.name).split(' ')[0]+', your Mountain Thrifters order '+o.id+' is on its way from Manali.'+(o.courier?'\nCourier: '+o.courier:'')+(o.tracking?'\nTracking number: '+o.tracking:'')+'\nThanks for buying from us. Send us a photo when it arrives!';}
 function loadOrders(){
   api('orders').then(function(d){
     if(!d.orders.length){$('orders').innerHTML='No orders yet.';return;}
     $('orders').className='';
     $('orders').innerHTML=d.orders.map(function(o){
-      var acts='';
-      if(o.status==='awaiting payment')acts='<button class="sm pop" data-o="'+o.id+'" data-s="paid">Payment received</button><button class="sm" data-o="'+o.id+'" data-s="cancelled">Cancel and relist</button>';
-      if(o.status==='paid')acts='<button class="sm pop" data-o="'+o.id+'" data-s="shipped">Mark shipped</button><button class="sm" data-o="'+o.id+'" data-s="cancelled">Cancel and relist</button>';
+      var acts='',cancel='<button class="sm" data-o="'+o.id+'" data-s="cancelled">Cancel and relist</button>',slip='<a class="sm" href="/print.html?order='+encodeURIComponent(o.id)+'" target="_blank" rel="noopener">Packing slip</a>';
+      if(o.status==='awaiting payment')acts='<button class="sm pop" data-o="'+o.id+'" data-s="paid">Payment received</button>'+cancel;
+      if(o.status==='paid')acts='<button class="sm pop" data-ship="'+o.id+'">Mark shipped</button>'+slip+cancel;
+      if(o.status==='shipped')acts='<a class="sm pop" href="https://wa.me/91'+esc(o.phone)+'?text='+encodeURIComponent(trackMsg(o))+'" target="_blank" rel="noopener">Send tracking on WhatsApp</a><button class="sm" data-o="'+o.id+'" data-s="delivered">Mark delivered</button><button class="sm" data-ship="'+o.id+'">Change tracking</button>'+slip;
+      var last=(o.log||[]).filter(function(l){return l.who;}).slice(-1)[0];
+      var form=shipOpen===o.id?'<div style="margin-top:12px;border-top:1px solid var(--edge);padding-top:4px"><div class="fl">Courier</div><div class="chips" data-cour>'+COURIERS.map(function(c){var on=(o.courier||'India Post')===c;return '<button type="button" class="'+(on?'on':'')+'" aria-pressed="'+on+'">'+c+'</button>';}).join('')+'</div><label for="trk-'+o.id+'">Tracking number (optional)</label><input id="trk-'+o.id+'" value="'+esc(o.tracking||'')+'" autocapitalize="characters"><div class="acts"><button class="sm pop" data-shipsave="'+o.id+'">Save and mark shipped</button><button class="sm" data-ship="">Not now</button></div></div>':'';
       return '<div class="box"><div class="t"><span class="tag">'+esc(o.status)+'</span><span class="dim">'+new Date(o.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+'</span></div>'+
         '<div class="t" style="margin-top:6px"><b>'+esc(o.id)+'</b><b>'+rs(o.total)+'</b></div>'+
         (o.items||[]).map(function(i){return '<div class="mute">'+esc(i.name)+(i.size?' ('+esc(i.size)+')':'')+'</div>';}).join('')+
+        (o.discount?'<div class="dim">'+esc(o.discountLabel||'Discount')+': minus '+rs(o.discount)+'</div>':'')+
         '<div style="margin-top:8px">'+esc(o.name)+', '+esc(o.phone)+'</div><div class="dim">'+esc(o.address)+', '+esc(o.city)+' '+esc(o.pincode)+'</div>'+
-        '<div class="acts">'+acts+'<a class="sm" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="https://wa.me/91'+esc(o.phone)+'" target="_blank" rel="noopener">WhatsApp customer</a></div></div>';
+        (o.courier||o.tracking?'<div class="dim" style="margin-top:6px">Sent with '+esc(o.courier||'courier')+(o.tracking?', tracking '+esc(o.tracking):'')+'</div>':'')+
+        (last?'<div class="dim">Marked '+esc(last.s)+' by '+esc(last.who)+'</div>':'')+
+        '<div class="acts">'+acts+'<a class="sm" href="https://wa.me/91'+esc(o.phone)+'" target="_blank" rel="noopener">WhatsApp customer</a></div>'+form+'</div>';
     }).join('');
   }).catch(function(e){$('orders').textContent=e.message;});
 }
 $('orders').onclick=function(e){
+  var c=e.target.closest('[data-cour] button');if(c){[].forEach.call(c.parentNode.children,function(x){x.classList.toggle('on',x===c);});return;}
+  var sh=e.target.closest('[data-ship]');if(sh){shipOpen=sh.getAttribute('data-ship');loadOrders();return;}
+  var sv=e.target.closest('[data-shipsave]');if(sv){var id=sv.getAttribute('data-shipsave'),box=sv.closest('.box');sv.disabled=true;
+    api('order-status',{id:id,status:'shipped',courier:box.querySelector('[data-cour] .on').textContent,tracking:$('trk-'+id).value}).then(function(){shipOpen='';loadOrders();}).catch(function(x){alert(x.message);sv.disabled=false;});return;}
   var b=e.target.closest('[data-o]');if(!b)return;
   if(b.getAttribute('data-s')==='cancelled'&&!confirm('Cancel this order and put the pieces back on sale?'))return;
   b.disabled=true;api('order-status',{id:b.getAttribute('data-o'),status:b.getAttribute('data-s')}).then(loadOrders).catch(function(e){alert(e.message);b.disabled=false;});
 };
 
 // ----- stock -----
+function isOwn(p){return /^p[a-z0-9]+$/.test(p.id)&&!p.sample;}
 function loadStock(){
   api('products').then(function(d){
-    var hasSamples=d.products.some(function(p){return p.sample;});
+    stockList=d.products;
+    var hasSamples=d.products.some(function(p){return p.sample;}),now=new Date().toISOString();
+    var F=[['all','All'],['live','On sale'],['drop','Next drop'],['draft','Drafts'],['old','30+ days'],['sold','Sold']];
+    var test={all:function(){return true;},live:function(p){return !p.sold&&!p.hidden;},drop:function(p){return !p.sold&&!p.draft&&p.hidden;},draft:function(p){return !!p.draft;},sold:function(p){return p.sold;},old:function(p){return sitting([p]).length;}};
+    if(!test[sFilter])sFilter='all';
+    $('sfilter').innerHTML=F.map(function(x){var n=d.products.filter(test[x[0]]).length;return '<button class="sm'+(x[0]===sFilter?' on':'')+'" data-sf="'+x[0]+'" aria-pressed="'+(x[0]===sFilter)+'">'+x[1]+' ('+n+')</button>';}).join('');
+    var list=d.products.filter(test[sFilter]);
     $('stock').className='';
     $('stock').innerHTML=(hasSamples?'<div class="box"><div>The shop is showing sample pieces.</div><div class="acts"><button class="sm" data-samples="1">Hide sample pieces</button></div></div>':
       d.hideSamples?'<div class="acts" style="margin-bottom:12px"><button class="sm" data-samples="0">Show sample pieces again</button></div>':'')+
-      (d.products.length?d.products.map(function(p){
-        var own=/^p[a-z0-9]+$/.test(p.id)&&!p.sample;
-        return '<div class="box"><div class="stk">'+(p.photo?'<img src="'+esc(p.photo)+'" alt="">':'<div class="np"></div>')+'<div style="flex:1;min-width:0"><div class="tag">'+(p.sold?'Sold':p.sample?'Sample':'On sale')+'</div><div>'+esc((p.brand?p.brand+' ':'')+p.name)+'</div>'+
-          '<div class="dim">'+rs(p.price)+(own?' · paid '+(p.cost!=null?rs(p.cost):'not set'):'')+' · '+esc(p.size||'')+'</div></div></div>'+
-          '<div class="acts"><button class="sm" data-sold="'+esc(p.id)+'" data-v="'+(p.sold?'0':'1')+'">'+(p.sold?'Put back on sale':'Mark as sold')+'</button>'+
-          (own?'<button class="sm" data-cost="'+esc(p.id)+'">Set what you paid</button><button class="sm" data-del="'+esc(p.id)+'">Delete</button>':'')+'</div></div>';
-      }).join(''):'<p class="mute">No stock yet. Add your first piece from the Add tab.</p>');
+      (sFilter==='old'&&list.length?'<p class="mute" style="margin-top:0">These have been on sale for 30 days or more. A lower price shows on the shop with the old one crossed out.</p>':'')+
+      (list.length?list.map(function(p){
+        var own=isOwn(p),st=p.sold?'Sold':p.sample?'Sample':p.draft?'Draft':p.hidden?'Next drop':'On sale';
+        return '<div class="box"><div class="stk">'+(p.photo?'<img src="'+esc(p.photo)+'" alt="">':'<div class="np"></div>')+'<div style="flex:1;min-width:0"><div class="tag">'+st+'</div><div>'+esc((p.brand?p.brand+' ':'')+p.name)+'</div>'+
+          '<div class="dim">'+rs(p.price)+(p.was?' <span class="strike">'+rs(p.was)+'</span>':'')+(own?' · paid '+(p.cost!=null?rs(p.cost):'not set'):'')+(p.size?' · '+esc(p.size):'')+'</div>'+
+          (own&&!p.draft?'<div class="dim">'+(p.views||0)+' looks · '+(p.bags||0)+' in bags'+(!p.hidden&&!p.sold?' · '+daysOld(p)+'d on sale':'')+'</div>':'')+'</div></div>'+
+          '<div class="acts">'+(own?'<button class="sm pop" data-edit="'+esc(p.id)+'">'+(p.draft?'Finish it':'Edit')+'</button>':'')+
+          (p.draft?'':'<button class="sm" data-sold="'+esc(p.id)+'" data-v="'+(p.sold?'0':'1')+'">'+(p.sold?'Put back on sale':'Mark as sold')+'</button>')+
+          (own&&!p.sold&&!p.hidden?'<button class="sm" data-cut="'+esc(p.id)+'" data-pct="10">Drop 10%</button><button class="sm" data-cut="'+esc(p.id)+'" data-pct="20">Drop 20%</button>':'')+
+          (own&&!p.sold&&!p.draft&&p.hidden?'<button class="sm" data-live="'+esc(p.id)+'">Put live now</button>':'')+
+          (own?'<button class="sm" data-del="'+esc(p.id)+'">Delete</button>':'')+'</div></div>';
+      }).join(''):'<p class="mute">'+(sFilter==='all'?'No stock yet. Add your first piece from the Add tab.':'Nothing here.')+'</p>');
   }).catch(function(e){$('stock').textContent=e.message;});
 }
+$('sfilter').onclick=function(e){var b=e.target.closest('[data-sf]');if(!b)return;sFilter=b.getAttribute('data-sf');$('s-flash').innerHTML='';loadStock();};
 $('stock').onclick=function(e){
-  var b=e.target.closest('button');if(!b)return;var job;
+  var b=e.target.closest('button');if(!b)return;var job,p;
+  if(b.hasAttribute('data-edit')){p=stockList.filter(function(x){return x.id===b.getAttribute('data-edit');})[0];if(p){$('s-flash').innerHTML='';startEdit(p);}return;}
   if(b.hasAttribute('data-samples'))job=api('samples',{hide:b.getAttribute('data-samples')==='1'});
   else if(b.hasAttribute('data-sold'))job=api('sold',{productId:b.getAttribute('data-sold'),sold:b.getAttribute('data-v')==='1'});
-  else if(b.hasAttribute('data-cost')){var c=prompt('What did you pay for this piece, in rupees?');if(c===null)return;job=api('product-cost',{id:b.getAttribute('data-cost'),cost:c});}
+  else if(b.hasAttribute('data-cut')){p=stockList.filter(function(x){return x.id===b.getAttribute('data-cut');})[0];var pct=Number(b.getAttribute('data-pct')),n=Math.max(10,Math.round(p.price*(100-pct)/100/10)*10);
+    if(!confirm('Drop the price from '+rs(p.price)+' to '+rs(n)+'? The old price shows crossed out on the shop.'))return;job=api('product-update',{id:p.id,price:n});}
+  else if(b.hasAttribute('data-live')){if(!confirm('Put this piece on sale now, ahead of the drop?'))return;job=api('product-update',{id:b.getAttribute('data-live'),when:'now'});}
   else if(b.hasAttribute('data-del')){if(!confirm('Delete this piece from the shop for good?'))return;job=api('product-delete',{id:b.getAttribute('data-del')});}
   if(job){b.disabled=true;job.then(loadStock).catch(function(e){alert(e.message);b.disabled=false;});}
 };
+
+// ----- the drop -----
+var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function loadDrop(){
+  Promise.all([api('drop'),api('products'),api('alerts')]).then(function(r){
+    dropInfo=r[0];stockList=r[1].products;var q=queued(stockList),rule=dropInfo.rule,drafts=stockList.filter(function(p){return p.draft;}).length;
+    var msg='New drop is live: '+q.length+' piece'+(q.length===1?'':'s')+' just went up. First come, first served.\n'+SHOP.replace('https://','')+'/shop';
+    $('drop').className='';
+    $('drop').innerHTML='<div class="dropbox" style="cursor:default"><span class="tag">Goes live in</span><div class="cd" data-cd="'+esc(dropInfo.next)+'">'+cd(dropInfo.next)+'</div><span class="mute">'+esc(dropWhen(dropInfo.next))+'</span></div>'+
+      '<h2>Lined up to go live together</h2>'+(q.length?q.map(function(p){return '<div class="box"><div class="stk">'+(p.photo?'<img src="'+esc(p.photo)+'" alt="">':'<div class="np"></div>')+'<div style="flex:1;min-width:0"><div>'+esc((p.brand?p.brand+' ':'')+p.name)+'</div><div class="dim">'+[p.size?esc(p.size):'',rs(p.price),p.igPending?'Instagram on':'No Instagram post'].filter(Boolean).join(' · ')+'</div></div></div><div class="acts"><button class="sm" data-edit="'+esc(p.id)+'">Edit</button><button class="sm" data-out="'+esc(p.id)+'">Take out of this drop</button></div></div>';}).join(''):'<p class="mute">Nothing lined up yet. When you add a piece, choose "Next drop" at the bottom.</p>')+
+      '<button class="btn pop" data-dadd type="button" style="margin-top:8px">Add a piece to this drop</button>'+
+      (drafts?'<p class="dim" style="margin:10px 0 0">You also have '+drafts+' draft'+(drafts>1?'s':'')+'. <button class="link" data-go="stock:draft">Finish them</button></p>':'')+
+      (q.length?'<button class="btn" data-dnow type="button" style="background:transparent;color:var(--ink);border-color:var(--edge);margin-top:10px">Put them all live right now</button>':'')+
+      '<h2>Message for your alerts list</h2><p class="dim" style="margin-top:0">'+r[2].people.length+' on the list. Send this from WhatsApp Business when the drop goes live.</p><textarea id="d-msg">'+esc(msg)+'</textarea><div class="acts" style="display:flex;gap:8px;margin-top:8px"><button class="sm pop" data-dcopy type="button">Copy message</button><button class="sm" data-go="alerts" type="button">Open the list</button></div><p class="dim" id="d-note" role="status" style="margin:8px 0 0"></p>'+
+      '<h2>When is the drop?</h2><div class="r2"><div><label for="d-day" style="margin-top:0">Day</label><select id="d-day">'+DAYS.map(function(n,i){return '<option value="'+i+'"'+(i===rule.day?' selected':'')+'>'+n+'</option>';}).join('')+'</select></div><div><label for="d-time" style="margin-top:0">Time (India)</label><input id="d-time" type="time" value="'+('0'+rule.hour).slice(-2)+':'+('0'+rule.minute).slice(-2)+'"></div></div>'+
+      '<div class="acts" style="display:flex;gap:8px;margin-top:10px"><button class="sm" data-dsave type="button">Save day and time</button></div><p class="dim" style="margin:8px 0 0">Pieces already lined up move to the new time. The line at the top of the shop says: "'+esc($('bn').value||'nothing')+'". <button class="link" data-go="settings">Change it</button></p>';
+  }).catch(function(e){$('drop').textContent=e.message;});
+}
+$('drop').onclick=function(e){
+  var b=e.target.closest('button');if(!b)return;var p;
+  if(b.hasAttribute('data-edit')){p=stockList.filter(function(x){return x.id===b.getAttribute('data-edit');})[0];if(p)startEdit(p);}
+  else if(b.hasAttribute('data-out')){b.disabled=true;api('product-update',{id:b.getAttribute('data-out'),when:'draft'}).then(loadDrop);}
+  else if(b.hasAttribute('data-dadd')){clearEdit();show('add');setWhen('drop');}
+  else if(b.hasAttribute('data-dcopy')){var t=$('d-msg').value;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){$('d-note').textContent='Copied.';},function(){$('d-msg').select();$('d-note').textContent='Press and hold the message to copy it.';});}
+  else if(b.hasAttribute('data-dsave')){var tm=($('d-time').value||'19:00').split(':');api('drop',{day:Number($('d-day').value),hour:Number(tm[0]),minute:Number(tm[1])}).then(loadDrop).catch(function(x){alert(x.message);});}
+  else if(b.hasAttribute('data-dnow')){var q=queued(stockList);if(!confirm('Put all '+q.length+' pieces on sale right now?'))return;b.disabled=true;
+    q.reduce(function(ch,x){return ch.then(function(){return api('product-update',{id:x.id,when:'now'});});},Promise.resolve()).then(loadDrop,function(x){alert(x.message);loadDrop();});}
+};
+
+// ----- discount codes and the buy-more offer -----
+var codeKind='percent';
+function loadCodes(){api('codes').then(function(d){
+  var b=d.bundle;$('codes').className='';
+  $('codes').innerHTML='<p class="mute" style="margin-top:0">Give a code to a hostel, a creator or a regular. Customers type it at checkout, and you see how often each one is used.</p>'+
+   '<div class="box"><div class="r2"><div><label for="k-code" style="margin-top:0">Code</label><input id="k-code" maxlength="24" placeholder="ZOSTEL10" autocapitalize="characters"></div><div><label for="k-val" style="margin-top:0">Amount</label><input id="k-val" inputmode="numeric" placeholder="10"></div></div>'+
+   '<div class="fl">Kind</div><div class="seg" id="k-kind" style="grid-template-columns:1fr 1fr"><button type="button" class="'+(codeKind==='percent'?'on':'')+'" data-k="percent">Percent off</button><button type="button" class="'+(codeKind==='flat'?'on':'')+'" data-k="flat">Rupees off</button></div>'+
+   '<div class="r2"><div><label for="k-min">Smallest order (Rs)</label><input id="k-min" inputmode="numeric" placeholder="No minimum"></div><div><label for="k-lim">Most times it can be used</label><input id="k-lim" inputmode="numeric" placeholder="No limit"></div></div>'+
+   '<div class="r2"><div><label for="k-end">Last day (optional)</label><input id="k-end" type="date"></div><div><label for="k-note">Who is it for?</label><input id="k-note" maxlength="80" placeholder="Zostel Old Manali"></div></div>'+
+   '<div class="acts"><button class="sm pop" data-ksave type="button">Save code</button></div><p class="msg" id="k-msg" role="status"></p></div>'+
+   (d.codes.length?d.codes.map(function(c){return '<div class="box"><div class="t"><b>'+esc(c.code)+'</b><span class="tag">'+(c.paused?'Paused':'Running')+'</span></div><div class="mute">'+(c.kind==='flat'?rs(c.value)+' off':c.value+'% off')+(c.min?' on orders of '+rs(c.min)+' or more':'')+'</div><div class="dim">Used '+(c.used||0)+(c.limit?' of '+c.limit:'')+' times'+(c.ends?' · ends '+esc(c.ends):'')+(c.note?' · '+esc(c.note):'')+'</div><div class="acts"><button class="sm" data-kp="'+esc(c.code)+'">'+(c.paused?'Start again':'Pause')+'</button><button class="sm" data-kd="'+esc(c.code)+'">Delete</button></div></div>';}).join(''):'<p class="mute">No codes yet.</p>')+
+   '<h2>Buy more, save more</h2><div class="box"><label class="tog" for="b-on" style="margin-top:0"><span>Give money off when someone buys several pieces</span><input id="b-on" type="checkbox"'+(b.on?' checked':'')+'></label><div class="r2"><div><label for="b-n">Pieces in the bag</label><input id="b-n" inputmode="numeric" value="'+b.n+'"></div><div><label for="b-pct">Percent off the lot</label><input id="b-pct" inputmode="numeric" value="'+b.pct+'"></div></div><div class="acts"><button class="sm pop" data-bsave type="button">Save offer</button></div><p class="dim" style="margin:8px 0 0">The shop shows it in the bag. A customer gets this or a code, whichever saves them more, never both.</p><p class="msg" id="b-msg" role="status"></p></div>';
+  $('codes')._list=d.codes;
+ }).catch(function(e){$('codes').textContent=e.message;});}
+$('codes').onclick=function(e){
+  var b=e.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-k')){codeKind=b.getAttribute('data-k');[].forEach.call(b.parentNode.children,function(x){x.classList.toggle('on',x===b);});}
+  else if(b.hasAttribute('data-ksave'))api('code',{code:$('k-code').value,kind:codeKind,value:$('k-val').value,min:$('k-min').value,limit:$('k-lim').value,ends:$('k-end').value,note:$('k-note').value}).then(loadCodes).catch(function(x){say('k-msg',x.message,'bad');});
+  else if(b.hasAttribute('data-kp')){var c=$('codes')._list.filter(function(x){return x.code===b.getAttribute('data-kp');})[0];api('code',{code:c.code,kind:c.kind,value:c.value,min:c.min,limit:c.limit,ends:c.ends,note:c.note,paused:!c.paused}).then(loadCodes);}
+  else if(b.hasAttribute('data-kd')){if(confirm('Delete this code? It stops working straight away.'))api('code-delete',{code:b.getAttribute('data-kd')}).then(loadCodes);}
+  else if(b.hasAttribute('data-bsave'))api('bundle',{on:$('b-on').checked,n:$('b-n').value,pct:$('b-pct').value}).then(function(){say('b-msg',$('b-on').checked?'Saved. The offer is on.':'Saved. The offer is off.','good');}).catch(function(x){say('b-msg',x.message,'bad');});
+};
+
+// ----- customers -----
+var buyers=[];
+function loadPeople(){api('orders').then(function(d){
+  var m={};d.orders.filter(function(o){return ['paid','shipped','delivered'].indexOf(o.status)>-1;}).forEach(function(o){var c=m[o.phone]=m[o.phone]||{phone:o.phone,name:o.name,city:o.city,n:0,total:0,last:o.at,items:[]};c.n++;c.total+=o.total;if(o.at>c.last){c.last=o.at;c.name=o.name;c.city=o.city;}(o.items||[]).forEach(function(i){c.items.push(i.name);});});
+  buyers=Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.total-a.total;});
+  var rep=buyers.filter(function(c){return c.n>1;}).length;
+  $('people').className='';
+  $('people').innerHTML='<div class="kpis"><div class="kpi"><b>'+buyers.length+'</b><span>Customers</span></div><div class="kpi"><b>'+rep+'</b><span>Came back for more</span></div></div>'+
+   (buyers.length?'<button class="btn" id="pp-vcf" type="button" style="background:transparent;color:var(--ink);border-color:var(--edge)">Save customers to my phone contacts</button><p class="dim" style="margin:10px 0 0">Built from orders you marked as paid. Biggest spenders first.</p>'+
+   buyers.map(function(c){return '<div class="box" style="margin-top:8px"><div class="t"><b>'+esc(c.name)+'</b><b>'+rs(c.total)+'</b></div><div>'+esc(c.phone)+(c.city?', '+esc(c.city):'')+'</div><div class="dim">'+c.n+' order'+(c.n>1?'s':'')+' · last on '+new Date(c.last).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+'</div><div class="dim">'+esc(c.items.slice(0,4).join(', '))+(c.items.length>4?' and more':'')+'</div><div class="acts"><a class="sm" href="https://wa.me/91'+esc(c.phone)+'" target="_blank" rel="noopener">WhatsApp</a></div></div>';}).join('')
+   :'<p class="mute">Nobody yet. Customers appear here once you tap "Payment received" on their order.</p>');
+ }).catch(function(e){$('people').textContent=e.message;});}
+$('people').onclick=function(e){if(!e.target.closest('#pp-vcf'))return;
+  var v=buyers.map(function(p){var n=String(p.name).replace(/[\r\n;,]/g,' ');return 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:MT Customer '+n+'\r\nN:'+n+';MT Customer;;;\r\nTEL;TYPE=CELL:+91'+p.phone+'\r\nEND:VCARD';}).join('\r\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([v],{type:'text/vcard'}));a.download='mountain-thrifters-customers.vcf';document.body.appendChild(a);a.click();a.remove();};
+
+// ----- sourcing log -----
+function loadSource(){Promise.all([api('sourcing'),api('products')]).then(function(r){
+  trips=r[0].trips;fillSrc($('a-src').value);var prods=r[1].products;
+  var spent=trips.reduce(function(t,x){return t+x.spent;},0),today=new Date(Date.now()+330*60000).toISOString().slice(0,10);
+  $('source').className='';
+  $('source').innerHTML='<p class="mute" style="margin-top:0">Write down each buying trip. When you add a piece, pick the trip it came from, and this page shows which trips paid off.</p>'+
+   '<div class="box"><div class="r2"><div><label for="t-date" style="margin-top:0">Date</label><input id="t-date" type="date" value="'+today+'"></div><div><label for="t-spent" style="margin-top:0">Total spent (Rs)</label><input id="t-spent" inputmode="numeric"></div></div>'+
+   '<label for="t-where">Where or who from</label><input id="t-where" maxlength="80" placeholder="Delhi, Sarojini market">'+
+   '<div class="r2"><div><label for="t-n">Pieces bought</label><input id="t-n" inputmode="numeric"></div><div><label for="t-note">Notes</label><input id="t-note" maxlength="300" placeholder="Travel cost, contact"></div></div>'+
+   '<div class="acts"><button class="sm pop" data-tsave type="button">Add to the log</button></div><p class="msg" id="t-msg" role="status"></p></div>'+
+   (trips.length?'<div class="kpis"><div class="kpi"><b>'+trips.length+'</b><span>Trips logged</span></div><div class="kpi"><b>'+rs(spent)+'</b><span>Spent in total</span></div></div>'+trips.map(function(t){
+     var mine=prods.filter(function(p){return p.source===t.id;}),sold=mine.filter(function(p){return p.sold;}),back=sold.reduce(function(a,p){return a+Number(p.price||0);},0);
+     return '<div class="box" style="margin-top:8px"><div class="t"><b>'+esc(t.where)+'</b><span class="dim">'+esc(t.date)+'</span></div><div class="mute">Spent '+rs(t.spent)+(t.pieces?' on '+t.pieces+' pieces':'')+(t.by?' · '+esc(t.by):'')+'</div>'+
+      '<div class="dim">'+mine.length+' listed · '+sold.length+' sold · '+rs(back)+' back so far'+(mine.length?'':' (no pieces linked to this trip yet)')+'</div>'+(mine.length&&t.spent?'<div class="'+(back>=t.spent?'good':'dim')+'" style="font-size:14px">'+(back>=t.spent?'Paid for itself, '+rs(back-t.spent)+' ahead.':rs(t.spent-back)+' to go before it has paid for itself.')+'</div>':'')+
+      (t.note?'<div class="dim">'+esc(t.note)+'</div>':'')+'<div class="acts"><button class="sm" data-td="'+esc(t.id)+'">Delete</button></div></div>';}).join(''):'<p class="mute">No trips yet.</p>');
+ }).catch(function(e){$('source').textContent=e.message;});}
+$('source').onclick=function(e){var b=e.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-tsave'))api('sourcing',{date:$('t-date').value,where:$('t-where').value,spent:$('t-spent').value,pieces:$('t-n').value,note:$('t-note').value}).then(loadSource).catch(function(x){say('t-msg',x.message,'bad');});
+  else if(b.hasAttribute('data-td')){if(confirm('Delete this trip from the log? Pieces stay on the shop.'))api('sourcing-delete',{id:b.getAttribute('data-td')}).then(loadSource);}
+};
+
+// ----- order alerts on the phone -----
+function loadPhone(){api('setup').then(function(d){
+  $('phone').className='';
+  $('phone').innerHTML=(d.telegram?'<div class="box" style="border-left:3px solid var(--good)"><b>Telegram alerts are on.</b><div class="mute">You get a message for every new order, gear offer, request and drop.</div><div class="acts"><button class="sm pop" data-ptest type="button">Send a test message</button></div><p class="msg" id="p-msg" role="status"></p></div>':
+   '<div class="box"><b>Not set up yet.</b><div class="mute">Right now you only see new orders when you open this app. Telegram is free and pings both your phones the moment an order lands. It takes about five minutes, one time.</div></div>'+
+   '<h2>Set it up</h2><ol class="mute" style="padding-left:20px"><li style="margin-bottom:10px">Install Telegram on your phone and sign in.</li><li style="margin-bottom:10px">In Telegram, search for <b>BotFather</b> (blue tick). Send it <b>/newbot</b>. Give it a name like "MT Orders". It replies with a long token. Keep that private.</li><li style="margin-bottom:10px">Make a group with you and your partner, and add your new bot to it.</li><li style="margin-bottom:10px">Send any message in the group. Then tell Claude you are at this step, and it will walk you through finding the group\'s chat ID.</li><li style="margin-bottom:10px">In Cloudflare, open the Worker, then Settings, Variables and Secrets. Add two secrets: <b>TELEGRAM_BOT_TOKEN</b> and <b>TELEGRAM_CHAT_ID</b>.</li><li>Come back here and tap the test button.</li></ol><div class="acts" style="display:flex"><button class="sm" data-ptest type="button">Send a test message</button></div><p class="msg" id="p-msg" role="status"></p>')+
+   '<p class="dim" style="margin-top:16px">Email alerts: '+(d.email?'on.':'off.')+' UPI payment details: '+(d.upi?'set.':'not set, customers are told you will send them on WhatsApp.')+'</p>';
+ }).catch(function(e){$('phone').textContent=e.message;});}
+$('phone').onclick=function(e){if(!e.target.closest('[data-ptest]'))return;say('p-msg','Sending…');api('test-alert',{}).then(function(r){say('p-msg',r.message,r.ok?'good':'bad');}).catch(function(x){say('p-msg',x.message,'bad');});};
 
 // ----- categories -----
 function drawCats(){
@@ -524,7 +793,6 @@ $('cats').onclick=function(e){
 // ----- numbers -----
 function loadStats(){api('stats').then(function(d){statData=d;drawStats();}).catch(function(e){$('stats').textContent=e.message;});}
 $('range').onclick=function(e){var b=e.target.closest('button');if(!b)return;days=Number(b.getAttribute('data-d'));[].forEach.call(this.children,function(x){x.classList.toggle('on',x===b);});drawStats();};
-function ist(iso){return new Date(new Date(iso).getTime()+330*60000);} // India time, read with getUTC*
 function avg(a){return a.length?a.reduce(function(s,x){return s+x;},0)/a.length:null;}
 function d1(n){return n==null?'n/a':n<1?'Under a day':(Math.round(n*10)/10)+' days';}
 function bars(vals,labels){var m=Math.max.apply(null,vals.concat([1]));return '<div class="bars">'+vals.map(function(v,i){return '<div title="'+v+' sold"><i style="height:'+Math.round(v/m*84)+'px"></i>'+labels[i]+'</div>';}).join('')+'</div>';}
@@ -587,6 +855,8 @@ function drawStats(){
   '<h2>What sells: category</h2>'+tbl(groupBy(sales,'category'),'Category')+
   '<h2>What sells: brand</h2>'+tbl(groupBy(sales,'brand'),'Brand')+
   '<h2>Month by month</h2>'+tbl(mrows,'Month')+
+  (function(){var w=(d.watch||[]).filter(function(x){return x.views;});return w.length?'<h2>Looked at most, still unsold</h2><p class="dim">Lots of looks and no sale usually means the price or the photos. Lots of bag adds means it is close.</p><table><tr><th>Piece</th><th>Looks</th><th>In bags</th><th>Days</th></tr>'+w.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+x.views+'</td><td>'+x.bags+'</td><td>'+x.days+'</td></tr>';}).join('')+'</table>':'';})()+
+  (function(){var m={};sales.forEach(function(x){if(x.code){var c=m[x.code]=m[x.code]||{n:0,rev:0,off:0};c.n++;c.rev+=x.price;c.off+=x.off||0;}});var k=Object.keys(m);return k.length?'<h2>Discount codes</h2><table><tr><th>Code</th><th>Pieces</th><th>Revenue</th><th>Given away</th></tr>'+k.map(function(c){return '<tr><td>'+esc(c)+'</td><td>'+m[c].n+'</td><td>'+rs(m[c].rev)+'</td><td>'+rs(m[c].off)+'</td></tr>';}).join('')+'</table>':'';})()+
   '<p class="dim" style="margin-top:20px">A sale counts once you tap "Payment received", or when you mark a piece as sold by hand. Shipping costs are not included.</p>';
 }
 
@@ -708,7 +978,7 @@ $('plan').addEventListener('change',function(e){var id=e.target.getAttribute&&e.
 drawTech();
 drawShots();
 loadConfig().catch(function(){});
-if(KEY)api('orders').then(function(){show('home');loadBrands();igState();}).catch(function(){show('');});else show('');
+if(KEY)api('orders').then(function(){show('home');loadBrands();igState();loadTrips();}).catch(function(){show('');});else show('');
 })();
 </script>
 </body>

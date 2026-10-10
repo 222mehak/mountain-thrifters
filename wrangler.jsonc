@@ -8,6 +8,6 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "mountain-thrifters", "database_id": "0691425b-c3cd-4a5b-9fd6-76b58723ca0d" }
   ],
-  // Once a week: renew the Instagram access token so the feed keeps working.
-  "triggers": { "crons": ["0 3 * * 1"] }
+  // Every ten minutes: post lined-up pieces when their drop goes live. Once a week: renew the Instagram token.
+  "triggers": { "crons": ["*/10 * * * *", "0 3 * * 1"] }
 }

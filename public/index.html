@@ -78,6 +78,10 @@ section{padding:88px 0}
 .card .n{font-size:17px;line-height:1.35}
 .card .m{font-size:14px;color:var(--dim)}
 .card .p{margin-top:4px}
+.was{color:var(--dim);text-decoration:line-through;margin-left:8px;font-size:.82em}
+.less{color:var(--pop);margin-left:8px;font-size:.72em;letter-spacing:.08em;text-transform:uppercase}
+.coderow{display:flex;gap:8px;margin:0 0 6px}.coderow input{flex:1;text-transform:uppercase}.coderow button{flex:none;min-height:48px;padding:0 18px;background:transparent;border:1px solid var(--edge);color:var(--ink);cursor:pointer}
+.sumrow{display:flex;justify-content:space-between;padding:6px 0;color:var(--mute)}
 .card .v{margin-top:8px;font-size:11px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
 .card:hover .v{color:var(--ink)}
 .card.sold .b,.card.sold .n,.card.sold .p,.card.sold .v{color:#6F756F}
@@ -230,6 +234,10 @@ var S={products:[],cats:[],wa:'919317568898',ig:null,igNext:'',loaded:false,done
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function rs(n){return 'Rs '+Number(n||0).toLocaleString('en-IN');}
+function price(p){var w=Number(p.was)||0,n=Number(p.price)||0;return rs(n)+(w>n&&!p.sold?'<span class="was">'+rs(w)+'</span>':'');}
+// Counts looks and bag-adds per piece for the owners. Once per visit, nothing personal.
+function track(id,kind){try{var k='mt_t_'+kind+'_'+id;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');}catch(e){}
+  try{fetch('/api/track',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:id,kind:kind}),keepalive:true}).catch(function(){});}catch(e){}}
 function waLink(text){return 'https://wa.me/'+S.wa+'?text='+encodeURIComponent(text);}
 
 // ----- bag (kept on this device) -----
@@ -247,6 +255,7 @@ function load(){
     S.products=Array.isArray(a[0])?a[0]:[];
     S.cats=(a[1]&&a[1].categories)||[];
     if(a[1]&&a[1].whatsapp)S.wa=a[1].whatsapp;
+    S.bundle=(a[1]&&a[1].bundle)||null;
     S.loaded=true;
     document.getElementById('fwa').href=waLink('Hi Mountain Thrifters!');
     var drop=(a[1]&&a[1].notice)||'';S.notice=drop;
@@ -270,7 +279,7 @@ function meta(p){return [p.size,p.condition].filter(Boolean).map(esc).join(' · 
 function card(p){
   return '<a class="card'+(p.sold?' sold':'')+'" href="/p/'+encodeURIComponent(p.id)+'" data-link>'+pic(p)+
     '<div class="b">'+esc(p.brand||'')+'</div><div class="n">'+esc(p.name)+'</div><div class="m">'+meta(p)+'</div>'+
-    '<div class="p">'+rs(p.price)+'</div><div class="v">'+(p.sold?'Gone':'View item')+'</div></a>';
+    '<div class="p">'+price(p)+'</div><div class="v">'+(p.sold?'Gone':'View item')+'</div></a>';
 }
 function soldLast(list){return list.filter(function(p){return !p.sold;}).concat(list.filter(function(p){return p.sold;}));}
 
@@ -409,12 +418,13 @@ function product(id){
   var p=S.products.filter(function(x){return x.id===id;})[0];
   if(!p){app.innerHTML='<div class="wrap page"><h1>This piece is gone</h1><p class="mute">It may have sold or been taken down.</p><a class="btn" href="/shop" data-link>Back to the shop</a></div>';return;}
   var photos=(p.photos&&p.photos.length?p.photos:(p.photo?[p.photo]:[]));
+  if(!p.sold)track(p.id,'view');
   var inBag=bag().indexOf(p.id)>-1;
   var facts=[['Brand',p.brand],['Size',p.size],['Condition',p.condition],['Category',[p.category,p.sub].filter(Boolean).join(' / ')],['For',p.gender],['Waterproofing',p.waterproof],['Weight',p.weight?p.weight+' g':''],['Built with',(p.tech||[]).join(', ')]].filter(function(r){return r[1];});
   var tested=p.tested?'<div class="tested"><b>Manali-tested</b><span>Worn and checked by us, up here.'+(p.testedLink?' <a href="'+esc(p.testedLink)+'" target="_blank" rel="noopener">Watch it in use.</a>':'')+'</span></div>':'';
   app.innerHTML='<div class="wrap page"><a class="back" href="/shop" data-link>Back to the shop</a><div class="pdp"><div class="gal"><div id="mainpic">'+pic(p,photos[0])+'</div>'+
   (photos.length>1?'<div class="thumbs">'+photos.map(function(s,i){return '<button type="button" data-pic="'+esc(s)+'" class="'+(i?'':'on')+'" aria-label="Photo '+(i+1)+'"><img src="'+esc(s)+'" alt=""></button>';}).join('')+'</div>':'')+'</div>'+
-  '<div><div class="eye">'+esc(p.brand||'One of one')+'</div><h1>'+esc(p.name)+'</h1><div class="price">'+rs(p.price)+'</div>'+
+  '<div><div class="eye">'+esc(p.brand||'One of one')+'</div><h1>'+esc(p.name)+'</h1><div class="price">'+price(p)+(Number(p.was)>Number(p.price)&&!p.sold?'<span class="less">Price dropped</span>':'')+'</div>'+
   tested+'<dl class="facts">'+facts.map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd></div>';}).join('')+'</dl>'+
   (p.description?'<p class="mute">'+esc(p.description)+'</p>':'')+
   (p.sold?'<button class="btn wide" disabled>Sold</button><div class="step" style="margin-top:14px"><p style="margin-bottom:14px"><b>This one found a home.</b> Want one like it? Tell us and we will look for it when we source.</p><a class="btn pop wide" href="/request?like='+encodeURIComponent(p.id)+'" data-link>Find me one like this</a></div><p class="dim"><a href="/shop" data-link>See what is still here.</a></p>'
@@ -427,19 +437,40 @@ function product(id){
 // ----- bag and checkout -----
 function line(p){return '<div class="item">'+pic(p)+'<div class="g"><div>'+esc((p.brand?p.brand+' ':'')+p.name)+'</div><div class="dim" style="font-size:14px">'+meta(p)+'</div></div><div>'+rs(p.price)+'</div></div>';}
 function sum(items){return items.reduce(function(s,p){return s+Number(p.price||0);},0);}
+// The total, with any money off shown above it. q is the answer from the shop when a code was checked.
+function totals(items,q){
+  var sub=sum(items),off=0,label='';
+  if(q&&q.off){off=q.off;label=q.label;}
+  else if(S.bundle&&items.length>=S.bundle.n){off=Math.round(sub*S.bundle.pct/100);label=S.bundle.pct+'% off for '+S.bundle.n+' or more pieces';}
+  return (off?'<div class="sumrow" style="padding-top:20px"><span>Pieces</span><span>'+rs(sub)+'</span></div><div class="sumrow"><span>'+esc(label)+'</span><span>minus '+rs(off)+'</span></div>':'')+
+    '<div class="total"'+(off?' style="padding-top:8px"':'')+'><span>Total</span><span>'+rs(sub-off)+'</span></div>';
+}
+var codeQ=null;
+function checkCode(){
+  var inp=document.getElementById('c-code'),msg=document.getElementById('codemsg'),v=inp.value.trim();
+  if(!v){codeQ=null;document.getElementById('cototal').innerHTML=totals(bagItems(),null);msg.textContent='';return;}
+  msg.textContent='Checking…';
+  fetch('/api/quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({items:bagItems().map(function(p){return p.id;}),code:v})}).then(function(r){return r.json();}).then(function(q){
+    if(q.message){codeQ=null;msg.textContent=q.message;}
+    else if(q.code){codeQ=q;msg.textContent='Code applied.';}
+    else{codeQ=null;msg.textContent=q.off?'The offer already on your bag saves you more, so we kept that one.':'That code does not apply to this bag.';}
+    document.getElementById('cototal').innerHTML=totals(bagItems(),codeQ);
+  }).catch(function(){msg.textContent='Could not check the code. Try again.';});
+}
 function bagView(){
   var items=bagItems();
   if(!items.length){app.innerHTML='<div class="wrap page"><div class="narrow"><h1>Your bag is empty</h1><p class="mute">Every piece is one of one, so grab it when you see it.</p><a class="btn" href="/shop" data-link>Shop gear</a></div></div>';return;}
   app.innerHTML='<div class="wrap page"><div class="narrow"><h1>Your bag</h1><div style="margin-top:24px">'+items.map(function(p){
     return '<div class="item">'+pic(p)+'<div class="g"><div>'+esc((p.brand?p.brand+' ':'')+p.name)+'</div><div class="dim" style="font-size:14px">'+meta(p)+'</div><button type="button" data-remove="'+esc(p.id)+'">Remove</button></div><div>'+rs(p.price)+'</div></div>';
-  }).join('')+'</div><div class="total"><span>Total</span><span>'+rs(sum(items))+'</span></div><a class="btn wide" href="/checkout" data-link>Checkout</a><p class="dim" style="font-size:14px">Pay by UPI. We confirm on WhatsApp and ship from Manali.</p></div></div>';
+  }).join('')+'</div>'+totals(items,null)+(S.bundle&&items.length<S.bundle.n?'<p class="mute" style="margin:0 0 16px">Add '+(S.bundle.n-items.length)+' more and get '+S.bundle.pct+'% off the lot.</p>':'')+'<a class="btn wide" href="/checkout" data-link>Checkout</a><p class="dim" style="font-size:14px">Pay by UPI. We confirm on WhatsApp and ship from Manali.</p></div></div>';
   var bk=kitHtml(items,'Finish the kit','Goes with your bag',3);if(bk)app.querySelector('.wrap').insertAdjacentHTML('beforeend',bk);
 }
 function checkout(msg){
   var items=bagItems();
   if(!items.length){bagView();return;}
-  app.innerHTML='<div class="wrap page"><div class="narrow"><a class="back" href="/bag" data-link>Back to bag</a><h1>Checkout</h1><div style="margin-top:20px">'+items.map(line).join('')+'</div><div class="total"><span>Total</span><span>'+rs(sum(items))+'</span></div>'+
-  '<form id="co" novalidate><label for="c-name">Full name</label><input id="c-name" name="name" autocomplete="name" required>'+
+  app.innerHTML='<div class="wrap page"><div class="narrow"><a class="back" href="/bag" data-link>Back to bag</a><h1>Checkout</h1><div style="margin-top:20px">'+items.map(line).join('')+'</div><div id="cototal">'+totals(items,codeQ)+'</div>'+
+  '<form id="co" novalidate><label for="c-code">Discount code (if you have one)</label><div class="coderow"><input id="c-code" name="code" autocomplete="off" autocapitalize="characters" value="'+esc(codeQ?codeQ.code:'')+'"><button type="button" data-code>Apply</button></div><p class="dim" id="codemsg" role="status" style="font-size:14px;margin:0;min-height:1.4em"></p>'+
+  '<label for="c-name">Full name</label><input id="c-name" name="name" autocomplete="name" required>'+
   '<label for="c-phone">Mobile number (10 digits)</label><input id="c-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" required>'+
   '<label for="c-address">Delivery address</label><textarea id="c-address" name="address" autocomplete="street-address" required></textarea>'+
   '<label for="c-city">City</label><input id="c-city" name="city" autocomplete="address-level2">'+
@@ -448,22 +479,22 @@ function checkout(msg){
   '<p class="dim" style="font-size:14px">Next step: send the order to us on WhatsApp and pay by UPI.</p></form></div></div>';
 }
 function placeOrder(form){
-  var d=new FormData(form),btn=form.querySelector('button'),err=document.getElementById('coerr');
-  var body={items:bagItems().map(function(p){return p.id;}),name:d.get('name'),phone:d.get('phone'),address:d.get('address'),city:d.get('city'),pincode:d.get('pincode')};
+  var d=new FormData(form),btn=form.querySelector('button.btn'),err=document.getElementById('coerr');
+  var body={items:bagItems().map(function(p){return p.id;}),name:d.get('name'),phone:d.get('phone'),address:d.get('address'),city:d.get('city'),pincode:d.get('pincode'),code:String(d.get('code')||'').trim()};
   btn.disabled=true;btn.textContent='Placing your order…';err.textContent='';
   fetch('/api/order',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(res){
     if(!res.ok){
       if(res.j.error==='sold'||res.j.error==='unknown'){load().then(function(){setBag(bagItems().map(function(p){return p.id;}));checkout(res.j.message);});return;}
       err.textContent=res.j.message||'Could not place the order. Please try again.';btn.disabled=false;btn.textContent='Place order';return;
     }
-    S.done={r:res.j,c:body};setBag([]);load();go('/done',true);
+    S.done={r:res.j,c:body};codeQ=null;setBag([]);load();go('/done',true);
   }).catch(function(){err.textContent='Could not reach the shop. Check your connection and try again.';btn.disabled=false;btn.textContent='Place order';});
 }
 function done(){
   if(!S.done){go('/shop',true);return;}
   var r=S.done.r,c=S.done.c;
   var text='Hi Mountain Thrifters! I have placed order '+r.orderId+'.\n'+(r.items||[]).map(function(i){return '- '+i.name+(i.size?' ('+i.size+')':'')+' '+rs(i.price);}).join('\n')+
-    '\nTotal: '+rs(r.total)+'\nPaying by UPI now.\nName: '+c.name+'\nPhone: '+c.phone+'\nDeliver to: '+c.address+', '+[c.city,c.pincode].filter(Boolean).join(' ');
+    (r.discount?'\n'+r.discountLabel+': minus '+rs(r.discount):'')+'\nTotal: '+rs(r.total)+'\nPaying by UPI now.\nName: '+c.name+'\nPhone: '+c.phone+'\nDeliver to: '+c.address+', '+[c.city,c.pincode].filter(Boolean).join(' ');
   var upi=r.upiId?'upi://pay?pa='+encodeURIComponent(r.upiId)+'&pn='+encodeURIComponent(r.upiName)+'&am='+r.total+'&cu=INR&tn='+encodeURIComponent('Order '+r.orderId):'';
   app.innerHTML='<div class="wrap page"><div class="narrow"><div class="eye">Order '+esc(r.orderId)+' / held for you</div><h1 style="margin-top:10px">Thanks, '+esc(String(c.name).split(' ')[0])+'. Two quick steps.</h1>'+
   '<div class="step"><div class="fl">Step 1</div><p>Send us your order on WhatsApp so we can confirm it.</p><a class="btn wa wide" href="'+esc(waLink(text))+'" target="_blank" rel="noopener">Send order on WhatsApp</a></div>'+
@@ -575,16 +606,18 @@ function render(){
 }
 function go(url,replace){history[replace?'replaceState':'pushState'](null,'',url);render();if(!location.hash)window.scrollTo(0,0);}
 window.addEventListener('popstate',render);
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='c-code'){e.preventDefault();checkCode();}});
 document.addEventListener('click',function(e){
   var sx=e.target.closest('[data-sx]');if(sx){sellShots.splice(Number(sx.getAttribute('data-sx')),1);drawSellShots();return;}
-  var kb=e.target.closest('[data-kit]');if(kb){var kids=bag();kb.getAttribute('data-kit').split(',').forEach(function(i){if(kids.indexOf(i)<0)kids.push(i);});setBag(kids);if(location.pathname==='/bag')bagView();else go('/bag');return;}
-  var t=e.target.closest('[data-link],[data-f],[data-clear],[data-buy],[data-add],[data-remove],[data-pic],[data-igmore]');
+  var kb=e.target.closest('[data-kit]');if(kb){var kids=bag();kb.getAttribute('data-kit').split(',').forEach(function(i){if(kids.indexOf(i)<0){kids.push(i);track(i,'bag');}});setBag(kids);if(location.pathname==='/bag')bagView();else go('/bag');return;}
+  var t=e.target.closest('[data-link],[data-f],[data-clear],[data-buy],[data-add],[data-remove],[data-pic],[data-igmore],[data-code]');
   if(!t)return;
+  if(t.hasAttribute('data-code')){checkCode();return;}
   if(t.hasAttribute('data-link')){if(e.metaKey||e.ctrlKey||e.shiftKey)return;e.preventDefault();go(t.getAttribute('href'));return;}
   if(t.hasAttribute('data-f')){var f=getF(),k=t.getAttribute('data-f');f[k]=t.getAttribute('data-v');if(k==='cat')f.sub='';setF(f);return;}
   if(t.hasAttribute('data-clear')){history.replaceState(null,'','/shop');shop(true);return;}
-  if(t.hasAttribute('data-buy')){var bi=bag(),bid=t.getAttribute('data-buy');if(bi.indexOf(bid)<0)bi.push(bid);setBag(bi);go('/checkout');return;}
-  if(t.hasAttribute('data-add')){var ids=bag(),id=t.getAttribute('data-add');if(ids.indexOf(id)<0)ids.push(id);setBag(ids);product(id);return;}
+  if(t.hasAttribute('data-buy')){var bi=bag(),bid=t.getAttribute('data-buy');if(bi.indexOf(bid)<0)bi.push(bid);setBag(bi);track(bid,'bag');go('/checkout');return;}
+  if(t.hasAttribute('data-add')){var ids=bag(),id=t.getAttribute('data-add');if(ids.indexOf(id)<0)ids.push(id);setBag(ids);track(id,'bag');product(id);return;}
   if(t.hasAttribute('data-remove')){setBag(bag().filter(function(x){return x!==t.getAttribute('data-remove');}));bagView();return;}
   if(t.hasAttribute('data-pic')){var p=S.products.filter(function(x){return '/p/'+encodeURIComponent(x.id)===location.pathname;})[0];if(p)document.getElementById('mainpic').innerHTML=pic(p,t.getAttribute('data-pic'));document.querySelectorAll('.thumbs button').forEach(function(b){b.classList.toggle('on',b===t);});return;}
   if(t.hasAttribute('data-igmore')){t.disabled=true;loadIg(S.igNext).then(drawFeed);}
