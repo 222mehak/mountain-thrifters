@@ -74,19 +74,19 @@ async function policies(env) {
       '<p>We are a small shop run by two people, so you are always talking to one of us.</p>' +
       '<h2>WhatsApp or call</h2><p><a href="https://wa.me/' + wa + '">' + phone + '</a>. This is the fastest way to reach us.</p>' +
       '<h2>Email</h2><p><a href="mailto:' + EMAIL + '">' + EMAIL + '</a></p>' +
-      '<h2>Address</h2><p>The Mountain Thrifters<br>' + ADDRESS.replace(/, /g, '<br>') + '</p>' +
+      '<h2>Address</h2><p>The Mountain Thrifters<br>Proprietor: Ankur Bodh<br>' + ADDRESS.replace(/, /g, '<br>') + '</p>' +
       '<h2>Instagram</h2><p><a href="https://www.instagram.com/mountain_thrifters/">@mountain_thrifters</a></p>' },
     shipping: { title: 'Shipping', desc: 'Shipping charges and delivery for orders from The Mountain Thrifters, sent from Manali across India.', html:
       '<p>Every order is packed by hand and sent from the Kullu-Manali valley. We ship across India.</p>' +
       '<h2>What it costs</h2><p>' + (free ? free + ' Below that, ' + below : below.charAt(0).toUpperCase() + below.slice(1)) + '</p>' +
-      '<h2>When it ships</h2><p>We pack your order once your payment is confirmed, and message you on WhatsApp with the courier name and tracking number when it leaves.</p>' +
+      '<h2>When it ships</h2><p>We dispatch within 24 hours of your payment being confirmed, and message you on WhatsApp with the courier name and tracking number when it leaves.</p>' +
       '<h2>Delivery</h2><p>How long it takes depends on the courier and your pincode. Mountain roads and weather can add a day or two in winter. If your parcel seems stuck, message us and we will chase it.</p>' +
       '<h2>If something arrives damaged</h2><p>Send us a photo on WhatsApp the day it arrives and we will sort it out.</p>' +
       '<p>Questions: ' + reach + '.</p>' },
     returns: { title: 'Returns, refunds and cancellations', desc: 'Return any piece within 5 days of receiving it. How returns, refunds and cancellations work at The Mountain Thrifters.', html:
       '<h2>Returns</h2><p>If a piece is not right, you can return it within 5 days of receiving it.</p>' +
       '<ul><li>Message us on WhatsApp with your order number and tell us what is wrong.</li><li>We tell you where to send it. You pay for the return shipping.</li><li>Send it back as it arrived: unwashed, not worn beyond trying it on, with anything that came with it.</li></ul>' +
-      '<h2>Refunds</h2><p>Once the piece is back with us and we have checked it, we refund what you paid for it, to the same method you paid with.</p>' +
+      '<h2>Refunds</h2><p>We refund what you paid for the piece right away, the day it gets back to us, to the same method you paid with. Your bank or UPI app can take a few days to show it.</p>' +
       '<h2>Cancellations</h2><p>You can cancel any time before your order ships. Message us on WhatsApp and we refund the full amount. Once it has shipped, it is handled as a return.</p>' +
       '<h2>Thrifted pieces</h2><p>Most of what we sell has been worn before. We describe the condition and show any flaws in the photos. If something you receive does not match the listing, tell us and we will make it right.</p>' +
       '<p>Reach us: ' + reach + '.</p>' },
@@ -98,7 +98,7 @@ async function policies(env) {
       '<h2>Payments</h2><p>Payments are handled by your UPI app or our payment provider. We never see or store your card or bank details.</p>' +
       '<h2>Removing your details</h2><p>To leave the alerts list or have your details deleted, message us: ' + reach + '.</p>' },
     terms: { title: 'Terms', desc: 'The terms for buying from The Mountain Thrifters.', html:
-      '<p>These are the terms for buying from The Mountain Thrifters at mountainthrifters.com.</p>' +
+      '<p>These are the terms for buying from The Mountain Thrifters at mountainthrifters.com. The shop is run by Ankur Bodh, from Kullu, Himachal Pradesh.</p>' +
       '<h2>What we sell</h2><p>Outdoor gear, thrifted and new. Thrifted pieces have been worn before; we check each one by hand, describe its condition and show flaws in the photos. Most pieces are one of a kind, so once one sells it is gone.</p>' +
       '<h2>Prices and payment</h2><p>Prices are in Indian rupees. An order is confirmed once we have received your payment. Until then the piece is held for you for a short time and may be released if payment does not arrive.</p>' +
       '<h2>Shipping</h2><p>See our <a href="/shipping">shipping page</a>.</p>' +
