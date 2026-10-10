@@ -220,7 +220,7 @@ section{padding:60px 0}
 <footer>
 <div class="wrap">
 <div>The Mountain Thrifters, Manali, Himachal Pradesh.<br>Outdoor gear, thrifted and new. Shipped across India.</div>
-<div><a href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Instagram @mountain_thrifters</a><br><a href="#" id="fwa" target="_blank" rel="noopener">Message us on WhatsApp</a><br>Call or WhatsApp: <a href="tel:+919317568898">+91 93175 68898</a></div>
+<div><a href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Instagram @mountain_thrifters</a><br><a href="/request" data-link>Ask us to find something</a><br><a href="#" id="fwa" target="_blank" rel="noopener">Message us on WhatsApp</a><br>Call or WhatsApp: <a href="tel:+919317568898">+91 93175 68898</a></div>
 </div>
 </footer>
 
@@ -355,7 +355,7 @@ function shop(keepOpen){
   (sizes.length?group('Size',opt('size','','All',!f.size)+sizes.map(function(s){return opt('size',s,s,f.size===s);}).join(''),true):'')+
   group('Condition',opt('cond','','All',!f.cond)+conds.map(function(c){return opt('cond',c,c,f.cond===c);}).join(''))+
   '<button type="button" class="btn ghost" data-clear>Clear filters</button></div></details>'+
-  '<div class="results">'+(list.length?'<div class="grid three">'+list.map(card).join('')+'</div>':'<div class="empty">Nothing matches those filters right now. New pieces land every week.</div>')+'</div></div></div>';
+  '<div class="results">'+(list.length?'<div class="grid three">'+list.map(card).join('')+'</div>':'<div class="empty">Nothing matches those filters right now. <a href="/request" data-link>Tell us what you are looking for</a> and we will try to find it.</div>')+'</div></div></div>';
 }
 
 // ----- kit suggestions -----
@@ -417,7 +417,7 @@ function product(id){
   '<div><div class="eye">'+esc(p.brand||'One of one')+'</div><h1>'+esc(p.name)+'</h1><div class="price">'+rs(p.price)+'</div>'+
   tested+'<dl class="facts">'+facts.map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd></div>';}).join('')+'</dl>'+
   (p.description?'<p class="mute">'+esc(p.description)+'</p>':'')+
-  (p.sold?'<button class="btn wide" disabled>Sold</button><p class="dim">This one found a home. <a href="/shop" data-link>See what is still here.</a></p>'
+  (p.sold?'<button class="btn wide" disabled>Sold</button><div class="step" style="margin-top:14px"><p style="margin-bottom:14px"><b>This one found a home.</b> Want one like it? Tell us and we will look for it when we source.</p><a class="btn pop wide" href="/request?like='+encodeURIComponent(p.id)+'" data-link>Find me one like this</a></div><p class="dim"><a href="/shop" data-link>See what is still here.</a></p>'
     :inBag?'<a class="btn wide pop" href="/checkout" data-link>Buy now</a><a class="btn wide ghost" style="margin-top:10px" href="/bag" data-link>In your bag. View bag</a>'
     :'<button class="btn wide pop" type="button" data-buy="'+esc(p.id)+'">Buy now</button><button class="btn wide ghost" style="margin-top:10px" type="button" data-add="'+esc(p.id)+'">Add to bag</button>')+
   '<p class="dim" style="font-size:14px">One of one. Thrifted, checked by hand and shipped from Manali across India.'+(p.link?' <a href="'+esc(p.link)+'" target="_blank" rel="noopener">See it on Instagram.</a>':'')+'</p></div></div></div>';
@@ -510,6 +510,19 @@ function guides(slugv){
     app.innerHTML='<div class="wrap page"><a class="back" href="/guides" data-link>All guides</a><div class="guide"><h1 style="font-size:clamp(38px,6vw,60px)">'+esc(g.title)+'</h1><p class="mute" style="font-size:18px">'+esc(g.summary)+'</p>'+g.html+'<div style="margin-top:40px"><a class="btn pop" href="/shop" data-link>Shop the gear</a></div></div></div>';
   });
 }
+function requestPage(){
+  var likeId=new URLSearchParams(location.search).get('like')||'',lp=S.products.filter(function(x){return x.id===likeId;})[0];
+  var pre=lp?((lp.brand?lp.brand+' ':'')+lp.name):'';
+  app.innerHTML='<div class="wrap page"><div class="narrow"><div class="eye">'+(lp?'Sold, but not forgotten':'We source to order')+'</div><h1 style="margin-top:10px">'+(lp?'Find me one like this':'Ask us to find it')+'</h1>'+
+  '<p class="mute">'+(lp?'We will look for another '+esc(pre)+', or something close, the next time we source.':'After a specific jacket, boot, pack or tent? Tell us. We go sourcing every week and we will keep an eye out.')+' We message you on WhatsApp if we find it. No payment now.</p>'+
+  '<form id="rf" novalidate><input type="hidden" name="like" value="'+esc(lp?lp.id:'')+'">'+
+  '<label for="r-what">What are you looking for?</label><textarea id="r-what" name="what" placeholder="Brand, type, colour, anything that matters" required>'+esc(pre)+'</textarea>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label for="r-size">Size</label><input id="r-size" name="size" value="'+esc(lp&&lp.size?lp.size:'')+'" placeholder="M, UK 8, 50 L"></div><div><label for="r-budget">Budget (optional)</label><input id="r-budget" name="budget" placeholder="Rs 3,000"></div></div>'+
+  '<label for="r-name">Your name</label><input id="r-name" name="name" autocomplete="name" required>'+
+  '<label for="r-phone">WhatsApp number (10 digits)</label><input id="r-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" required>'+
+  '<label for="r-al" style="display:flex;gap:12px;align-items:flex-start;letter-spacing:0;text-transform:none;font-size:15px;color:var(--ink);margin-top:20px;cursor:pointer"><input id="r-al" name="alerts" type="checkbox" style="width:24px;height:24px;flex:none;accent-color:#E8623A"><span>Also message me before each weekly drop.</span></label>'+
+  '<p class="err" id="rerr" role="alert"></p><button class="btn pop wide" style="margin-top:8px">Send my request</button></form></div></div>';
+}
 function alerts(){
   var cats=S.cats.map(function(c){return '<option>'+esc(c.name)+'</option>';}).join('');
   app.innerHTML='<div class="wrap page"><div class="narrow"><div class="eye">Drop alerts</div><h1 style="margin-top:10px">Get first look</h1><p class="mute">Every piece is one of one, so the good stuff goes fast. Leave your WhatsApp number and we will message you before each drop.</p>'+
@@ -532,7 +545,7 @@ function drawFeed(){
 }
 
 // ----- routing -----
-var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',alerts:'Get drop alerts',guides:'Mountain gear guides',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
+var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',alerts:'Get drop alerts',request:'Ask us to find it',guides:'Mountain gear guides',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
 function render(){
   var path=location.pathname.replace(/\/+$/,'')||'/',name=path.split('/')[1]||'home';
   document.body.classList.toggle('home',path==='/');
@@ -551,6 +564,7 @@ function render(){
   else if(path==='/sell')sell();
   else if(path==='/feed')feed();
   else if(path==='/alerts')alerts();
+  else if(path==='/request')requestPage();
   else if(path==='/guides'||path.indexOf('/guides/')===0)guides(path.slice(8));
   else home();
   if(name==='c'||name==='p')name='shop';
@@ -577,6 +591,13 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('submit',function(e){
   if(e.target.id==='co'){e.preventDefault();placeOrder(e.target);}
+  if(e.target.id==='rf'){e.preventDefault();var rf=e.target,rd=new FormData(rf),rb=rf.querySelector('button'),re2=document.getElementById('rerr');
+    rb.disabled=true;re2.textContent='';
+    fetch('/api/request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:rd.get('name'),phone:rd.get('phone'),what:rd.get('what'),size:rd.get('size'),budget:rd.get('budget'),like:rd.get('like'),alerts:!!rd.get('alerts')})})
+     .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(res){
+      if(!res.ok){re2.textContent=res.j.message||'That did not send. Please try again.';rb.disabled=false;return;}
+      app.innerHTML='<div class="wrap page"><div class="narrow"><div class="eye">On our list</div><h1 style="margin-top:10px">We will look for it</h1><p class="mute">If we find it, or something close, you will hear from us on WhatsApp first. We cannot promise every find, but we do go looking.</p><a class="btn" href="/shop" data-link>See what is up now</a></div></div>';window.scrollTo(0,0);
+     }).catch(function(){re2.textContent='Could not reach the shop. Check your connection and try again.';rb.disabled=false;});}
   if(e.target.id==='af'){e.preventDefault();var af=e.target,ad=new FormData(af),ab=af.querySelector('button'),ae=document.getElementById('alerr');
     ab.disabled=true;ae.textContent='';
     fetch('/api/alerts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:ad.get('name'),phone:ad.get('phone'),interest:ad.get('interest'),size:ad.get('size'),email:ad.get('email'),agree:!!ad.get('agree')})})

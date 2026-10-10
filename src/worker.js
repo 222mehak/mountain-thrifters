@@ -57,6 +57,7 @@ async function init(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS guides (slug TEXT PRIMARY KEY, data TEXT, published INTEGER, at TEXT)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS subscribers (phone TEXT PRIMARY KEY, data TEXT, at TEXT)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, phone TEXT, status TEXT, data TEXT, at TEXT)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS requests (id TEXT PRIMARY KEY, phone TEXT, status TEXT, data TEXT, at TEXT)'),
   ]);
   ready = true;
 }
@@ -336,6 +337,10 @@ async function admin(request, env, path, ctx) {
   }
   if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx, true), hideSamples: (await setting(env, 'hide_samples')) === '1' });
   if (path === '/api/admin/stats' && request.method === 'GET') return stats(request, env, ctx);
+  if (path === '/api/admin/requests' && request.method === 'GET') {
+    const rows = await env.DB.prepare('SELECT id, phone, status, data, at FROM requests ORDER BY at DESC LIMIT 500').all();
+    return json({ requests: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), id: r.id, phone: r.phone, status: r.status, at: r.at })) });
+  }
   if (path === '/api/admin/offers' && request.method === 'GET') {
     const rows = await env.DB.prepare('SELECT id, phone, status, data, at FROM offers ORDER BY at DESC LIMIT 300').all();
     return json({ offers: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), id: r.id, phone: r.phone, status: r.status, at: r.at })) });
@@ -401,6 +406,12 @@ async function admin(request, env, path, ctx) {
     return json({ ok: true, slug: slugv });
   }
   if (path === '/api/admin/guide-delete') { await env.DB.prepare('DELETE FROM guides WHERE slug = ?').bind(String(body.slug)).run(); return json({ ok: true }); }
+  if (path === '/api/admin/request-status') {
+    const st = ['open', 'found', 'closed'].includes(body.status) ? body.status : '';
+    if (!st || !body.id) return json({ error: 'bad_request' }, 400);
+    await env.DB.prepare('UPDATE requests SET status = ? WHERE id = ?').bind(st, String(body.id)).run(); return json({ ok: true });
+  }
+  if (path === '/api/admin/request-delete') { await env.DB.prepare('DELETE FROM requests WHERE id = ?').bind(String(body.id)).run(); return json({ ok: true }); }
   if (path === '/api/admin/offer-status') {
     const st = ['new', 'replied', 'bought', 'passed'].includes(body.status) ? body.status : '';
     if (!st || !body.id) return json({ error: 'bad_request' }, 400);
@@ -565,7 +576,7 @@ const rupees = (n) => 'Rs ' + Number(n || 0).toLocaleString('en-IN');
 const PAGES = { '/': ['Thrifted outdoor gear from Manali, delivered across India', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Thrifted and new, at fair prices, shipped from Manali across India.'],
   '/shop': ['Shop thrifted outdoor gear', 'Thrifted jackets, puffers, trek boots, backpacks, tents and trek essentials from the brands you know. Filter by brand, size and category. Delivered across India.'],
   '/sell': ['Sell your outdoor gear', 'Sell your jacket, boots, backpack, tent or bulk stock to The Mountain Thrifters. Get an offer and get paid by UPI.'],
-  '/feed': ['Shop our Instagram', 'Tap any photo from @mountain_thrifters to buy that piece. Mountain gear, thrifted and new, shipped across India.'], '/alerts': ['Get drop alerts', 'Be first to see new mountain gear. Sign up and we will message you on WhatsApp before each drop.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''], '/done': ['Order placed', ''] };
+  '/feed': ['Shop our Instagram', 'Tap any photo from @mountain_thrifters to buy that piece. Mountain gear, thrifted and new, shipped across India.'], '/request': ['Ask us to find it', 'Looking for a specific jacket, boot, pack or tent? Tell The Mountain Thrifters what you need and we will try to source it for you.'], '/alerts': ['Get drop alerts', 'Be first to see new mountain gear. Sign up and we will message you on WhatsApp before each drop.'], '/bag': ['Your bag', ''], '/checkout': ['Checkout', ''], '/done': ['Order placed', ''] };
 // Plain HTML put inside the page before the app starts, so search engines
 // read real headings, links and prices instead of a loading message.
 const fullName = (p) => (p.brand ? p.brand + ' ' : '') + p.name;
@@ -701,6 +712,25 @@ export default {
       if (url.pathname === '/api/config') return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env) });
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);
+      // A customer asking us to find something: either "one like this sold piece" or anything they describe.
+      if (url.pathname === '/api/request' && request.method === 'POST') {
+        const b = await request.json().catch(() => ({}));
+        const name = clean(b.name, 60), phone = clean(b.phone, 20).replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, ''), what = clean(b.what, 400);
+        if (!name || phone.length !== 10 || !what) return json({ error: 'details', message: 'Add your name, a 10-digit WhatsApp number and what you are looking for.' }, 400);
+        const day = new Date(Date.now() - 864e5).toISOString();
+        const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM requests WHERE phone = ? AND at > ?').bind(phone, day).first();
+        if (recent && recent.n >= 8) return json({ error: 'busy', message: 'You have sent a few already today. Message us on WhatsApp for the rest.' }, 429);
+        let like = null;
+        if (b.like) { const p = (await allProducts(request, env, ctx)).find((x) => x.id === String(b.like)); if (p) like = { id: p.id, name: (p.brand ? p.brand + ' ' : '') + p.name, category: p.category || '', sub: p.sub || '' }; }
+        const id = 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36), at = new Date().toISOString();
+        const data = { name, what, size: clean(b.size, 20), budget: clean(b.budget, 30), like };
+        const stmts = [env.DB.prepare('INSERT INTO requests (id, phone, status, data, at) VALUES (?, ?, ?, ?, ?)').bind(id, phone, 'open', JSON.stringify(data), at)];
+        if (b.alerts) stmts.push(env.DB.prepare('INSERT OR IGNORE INTO subscribers (phone, data, at) VALUES (?, ?, ?)').bind(phone, JSON.stringify({ name, email: '', interest: like ? like.category : '', size: data.size }), at));
+        await env.DB.batch(stmts);
+        if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) ctx.waitUntil(fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/sendMessage', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: 'Gear request from ' + name + ' (' + phone + '): ' + what + (data.size ? ', size ' + data.size : '') }) }).catch(() => {}));
+        return json({ ok: true });
+      }
       // Someone offering gear to sell, with photos. Lands in the owners' app.
       if (url.pathname === '/api/sell' && request.method === 'POST') {
         const b = await request.json().catch(() => ({}));

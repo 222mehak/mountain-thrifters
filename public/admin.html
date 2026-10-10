@@ -161,6 +161,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 </section>
 
 <section id="t-orders" hidden><h1>Orders</h1>
+<button class="btn" id="openreqs" type="button" style="margin:0 0 10px;background:transparent;color:var(--ink);border-color:var(--edge)">Gear customers are asking for</button>
 <button class="btn" id="openoffers" type="button" style="margin:0 0 16px;background:transparent;color:var(--ink);border-color:var(--edge)">Gear people want to sell us</button><div id="orders" class="mute">Loading…</div></section>
 <section id="t-stock" hidden><h1>Stock</h1>
 <div class="box"><label for="bn" style="margin-top:0">Line across the top of the shop</label><input id="bn" maxlength="140"><p class="dim" style="margin:6px 0 0">"Sign up for alerts" is added after it and opens WhatsApp. Leave it empty to hide the line.</p><div class="acts"><button class="sm pop" id="bnsave" type="button">Save</button><span class="dim" id="bnmsg" role="status" style="align-self:center"></span></div></div><div id="stock" class="mute">Loading…</div></section>
@@ -184,6 +185,12 @@ details.ph>summary::-webkit-details-marker{display:none}
 <button class="btn" id="openalerts" type="button" style="margin:0 0 10px;background:transparent;color:var(--ink);border-color:var(--edge)">Drop alerts list</button>
 <button class="btn" id="openguides" type="button" style="margin:0 0 18px;background:transparent;color:var(--ink);border-color:var(--edge)">Write and manage guides</button>
 <div id="plan" class="mute">Loading…</div>
+</section>
+
+<section id="t-reqs" hidden>
+<h1>Gear customers want</h1>
+<p class="mute" style="margin-top:0">What people asked you to find, from sold pieces and the request page. Use it as your sourcing list.</p>
+<div id="rlist" class="mute">Loading…</div>
 </section>
 
 <section id="t-offers" hidden>
@@ -235,7 +242,7 @@ function api(path,body){
 function signOut(){try{localStorage.removeItem('mt_admin_key');}catch(e){}KEY='';show('');}
 function show(tab){
   $('login').hidden=!!KEY;$('tabs').hidden=!KEY;
-  ['add','orders','stock','cats','stats','plan','guides','alerts','offers'].forEach(function(t){$('t-'+t).hidden=!KEY||t!==tab;});
+  ['add','orders','stock','cats','stats','plan','guides','alerts','offers','reqs'].forEach(function(t){$('t-'+t).hidden=!KEY||t!==tab;});
   document.querySelectorAll('nav button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===tab);});
   if(!KEY)return;
   if(tab==='orders')loadOrders();
@@ -246,6 +253,7 @@ function show(tab){
   if(tab==='guides')loadGuides();
   if(tab==='alerts')loadAlerts();
   if(tab==='offers')loadOffers();
+  if(tab==='reqs')loadReqs();
   window.scrollTo(0,0);
 }
 function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();$('bn').value=c.notice||'';});}
@@ -510,6 +518,27 @@ function drawStats(){
   '<h2>Month by month</h2>'+tbl(mrows,'Month')+
   '<p class="dim" style="margin-top:20px">A sale counts once you tap "Payment received", or when you mark a piece as sold by hand. Shipping costs are not included.</p>';
 }
+
+// ----- gear customers are asking for -----
+$('openreqs').onclick=function(){show('reqs');};
+function loadReqs(){api('requests').then(function(d){
+  var open=d.requests.filter(function(r){return r.status==='open';}),tally={};
+  open.forEach(function(r){var k=r.like?(r.like.sub||r.like.category||r.like.name):'Described by the customer';tally[k]=(tally[k]||0)+1;});
+  var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a];});
+  $('rlist').className='';
+  $('rlist').innerHTML='<div class="kpis"><div class="kpi"><b>'+open.length+'</b><span>Open requests</span></div><div class="kpi"><b>'+d.requests.filter(function(r){return r.status==='found';}).length+'</b><span>Found so far</span></div></div>'+
+   (top.length?'<h2>Most wanted right now</h2><table><tr><th>Type</th><th>Requests</th></tr>'+top.slice(0,8).map(function(k){return '<tr><td>'+esc(k)+'</td><td>'+tally[k]+'</td></tr>';}).join('')+'</table><h2>Every request</h2>':'')+
+   (d.requests.length?d.requests.map(function(r){
+     return '<div class="box" style="margin-bottom:10px"><div class="t"><span class="tag">'+esc(r.status)+'</span><span class="dim">'+new Date(r.at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+'</span></div>'+
+      '<div style="margin-top:6px">'+esc(r.what)+'</div><div class="dim">'+esc([r.size?'Size '+r.size:'',r.budget?'Budget '+r.budget:'',r.like?'Like the sold '+r.like.name:''].filter(Boolean).join(' · '))+'</div><div style="margin-top:6px"><b>'+esc(r.name)+'</b>, '+esc(r.phone)+'</div>'+
+      '<div class="acts"><a class="sm pop" style="display:inline-flex;align-items:center;text-decoration:none" href="https://wa.me/91'+esc(r.phone)+'?text='+encodeURIComponent('Hi '+r.name.split(' ')[0]+', this is The Mountain Thrifters. You asked us to look for: '+r.what+'. ')+'" target="_blank" rel="noopener">Message on WhatsApp</a>'+
+      (r.status!=='found'?'<button class="sm" data-rs="found" data-rid="'+esc(r.id)+'">Mark found</button>':'')+(r.status!=='closed'?'<button class="sm" data-rs="closed" data-rid="'+esc(r.id)+'">Close</button>':'')+'<button class="sm" data-rd="'+esc(r.id)+'">Delete</button></div></div>';
+   }).join(''):'<p class="mute">No requests yet. They come from the "Find me one like this" button on sold pieces and from mountainthrifters.com/request</p>');
+ }).catch(function(e){$('rlist').textContent=e.message;});}
+$('rlist').onclick=function(e){var b=e.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-rs'))api('request-status',{id:b.getAttribute('data-rid'),status:b.getAttribute('data-rs')}).then(loadReqs);
+  else if(b.hasAttribute('data-rd')){if(confirm('Delete this request?'))api('request-delete',{id:b.getAttribute('data-rd')}).then(loadReqs);}
+};
 
 // ----- gear offered for sale -----
 $('openoffers').onclick=function(){show('offers');};
