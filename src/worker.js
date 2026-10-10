@@ -109,6 +109,11 @@ async function policies(env) {
       '<p>Questions: ' + reach + '.</p>' },
   };
 }
+// A thank-you code for first-time customers, made when their first order ships.
+async function thanksRule(env) {
+  try { const v = JSON.parse(await setting(env, 'thanks')); if (v) return { on: !!v.on, pct: Math.min(50, Math.max(1, Number(v.pct) || 10)), days: Math.min(365, Math.max(7, Number(v.days) || 45)) }; } catch (e) { /* default */ }
+  return { on: true, pct: 10, days: 45 };
+}
 async function tg(env, text) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return false;
   try { const r = await fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/sendMessage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text }) }); return r.ok; } catch (e) { return false; }
@@ -573,7 +578,7 @@ async function admin(request, env, path, ctx) {
   if (path === '/api/admin/drop' && request.method === 'GET') { const rule = await dropRule(env); return json({ rule, next: nextDrop(rule) }); }
   if (path === '/api/admin/codes' && request.method === 'GET') {
     const rows = await env.DB.prepare('SELECT code, data, at FROM codes ORDER BY at DESC').all();
-    return json({ codes: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), code: r.code, at: r.at })), bundle: await bundleRule(env) });
+    return json({ codes: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), code: r.code, at: r.at })), bundle: await bundleRule(env), thanks: await thanksRule(env) });
   }
   if (path === '/api/admin/sourcing' && request.method === 'GET') {
     const rows = await env.DB.prepare('SELECT id, data, at FROM sourcing ORDER BY at DESC LIMIT 500').all();
@@ -669,6 +674,7 @@ async function admin(request, env, path, ctx) {
     if (!body.preview) for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
     return json({ ok: true, count: stmts.length });
   }
+  if (path === '/api/admin/thanks') { await saveSetting(env, 'thanks', JSON.stringify({ on: !!body.on, pct: num(body.pct) || 10, days: num(body.days) || 45 })); return json({ ok: true }); }
   if (path === '/api/admin/sale-end') return json({ ok: true, count: await endSale(env, false) });
   if (path === '/api/admin/bundle') {
     const n = num(body.n) || 2, pct = num(body.pct) || 0;
@@ -784,9 +790,25 @@ async function admin(request, env, path, ctx) {
     const o = JSON.parse(row.data);
     o.log = (o.log || []).concat([{ s: status, who: who(request), at: new Date().toISOString() }]).slice(-20);
     if (status === 'shipped') { o.courier = clean(body.courier, 40); o.tracking = clean(body.tracking, 60); }
+    const extra = [];
+    if (status === 'shipped' && !o.thanksCode) {
+      const rule = await thanksRule(env);
+      if (rule.on) {
+        // Only for a first order: no other paid order from this mobile number.
+        const past = await env.DB.prepare("SELECT id, data FROM orders WHERE status IN ('paid', 'shipped', 'delivered')").all();
+        const before = (past.results || []).some((r) => r.id !== o.id && JSON.parse(r.data).phone === o.phone);
+        if (!before) {
+          const code = (String(o.name).split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6) || 'MT') + Math.random().toString(36).slice(2, 5).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+          const ends = new Date(Date.now() + rule.days * 864e5 + 330 * 60000).toISOString().slice(0, 10);
+          extra.push(env.DB.prepare('INSERT OR IGNORE INTO codes (code, data, at) VALUES (?, ?, ?)').bind(code, JSON.stringify({ kind: 'percent', value: rule.pct, min: 0, limit: 1, ends, note: 'First-order thank-you for ' + o.name, paused: false, used: 0 }), new Date().toISOString()));
+          o.thanksCode = code; o.thanksPct = rule.pct; o.thanksEnds = ends;
+        }
+      }
+    }
     const stmts = [env.DB.prepare('UPDATE orders SET status = ?, data = ? WHERE id = ?').bind(status, JSON.stringify(o), String(body.id))];
     // Cancelling an order puts its pieces back on sale.
     if (status === 'cancelled') stmts.push(env.DB.prepare('DELETE FROM sold WHERE order_id = ?').bind(String(body.id)));
+    stmts.push(...extra);
     await env.DB.batch(stmts);
     return json({ ok: true });
   }
@@ -1078,7 +1100,7 @@ export default {
           return json({ ok: true });
         }
         return json({ id: o.id, status: row.status, at: row.at, items: (o.items || []).map((i) => ({ name: i.name, size: i.size, price: i.price })), total: o.total, shipping: o.shipping || 0,
-          discount: o.discount || 0, discountLabel: o.discountLabel || '', courier: o.courier || '', tracking: o.tracking || '', utr: o.utr || '', first: String(o.name).split(' ')[0], city: o.city || '',
+          discount: o.discount || 0, discountLabel: o.discountLabel || '', courier: o.courier || '', tracking: o.tracking || '', utr: o.utr || '', thanks: o.thanksCode && ['shipped', 'delivered'].includes(row.status) ? { code: o.thanksCode, pct: o.thanksPct, ends: o.thanksEnds } : null, first: String(o.name).split(' ')[0], city: o.city || '',
           upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
       }
       // A customer asking us to find something: either "one like this sold piece" or anything they describe.

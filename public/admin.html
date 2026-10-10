@@ -601,7 +601,7 @@ $('a-go').onclick=function(){
 // ----- orders -----
 var COURIERS=['India Post','Delhivery','DTDC','Blue Dart','Other'],shipOpen='';
 function oLink(o){return o.key?SHOP+'/order/'+o.id+'?k='+o.key:'';}
-function trackMsg(o){return 'Hi '+String(o.name).split(' ')[0]+', your Mountain Thrifters order '+o.id+' is on its way from Manali.'+(o.courier?'\nCourier: '+o.courier:'')+(o.tracking?'\nTracking number: '+o.tracking:'')+(oLink(o)?'\nYour order page: '+oLink(o):'')+'\nThanks for buying from us. Send us a photo when it arrives!';}
+function trackMsg(o){return 'Hi '+String(o.name).split(' ')[0]+', your Mountain Thrifters order '+o.id+' is on its way from Manali.'+(o.courier?'\nCourier: '+o.courier:'')+(o.tracking?'\nTracking number: '+o.tracking:'')+(oLink(o)?'\nYour order page: '+oLink(o):'')+(o.thanksCode?'\nAnd a thank-you for your first order: '+o.thanksPct+'% off your next piece with code '+o.thanksCode+'.':'')+'\nThanks for buying from us. Send us a photo when it arrives!';}
 function loadOrders(){
   api('orders').then(function(d){
     if(!d.orders.length){$('orders').innerHTML='No orders yet.';return;}
@@ -620,6 +620,7 @@ function loadOrders(){
         (o.utr&&o.status==='awaiting payment'?'<div style="margin-top:8px;border-left:3px solid var(--pop);padding-left:10px"><b>Customer says they paid.</b><br>UPI reference: <b>'+esc(o.utr)+'</b><div class="dim">Find this number in your UPI app, then tap Payment received.</div></div>':o.utr?'<div class="dim">UPI reference: '+esc(o.utr)+'</div>':'')+
         '<div style="margin-top:8px">'+esc(o.name)+', '+esc(o.phone)+'</div><div class="dim">'+esc(o.address)+', '+esc(o.city)+' '+esc(o.pincode)+'</div>'+
         (o.courier||o.tracking?'<div class="dim" style="margin-top:6px">Sent with '+esc(o.courier||'courier')+(o.tracking?', tracking '+esc(o.tracking):'')+'</div>':'')+
+        (o.thanksCode?'<div class="dim">First order. Thank-you code '+esc(o.thanksCode)+' ('+o.thanksPct+'% off) is in the tracking message.</div>':'')+
         (last?'<div class="dim">Marked '+esc(last.s)+' by '+esc(last.who)+'</div>':'')+
         '<div class="acts">'+acts+'<a class="sm" href="https://wa.me/91'+esc(o.phone)+'" target="_blank" rel="noopener">WhatsApp customer</a>'+(oLink(o)?'<a class="sm" href="'+esc(oLink(o).replace(SHOP,''))+'" target="_blank" rel="noopener">Customer\'s order page</a>':'')+'</div>'+form+'</div>';
     }).join('');
@@ -719,6 +720,7 @@ function loadCodes(){Promise.all([api('codes'),api('products')]).then(function(r
    '<div class="r2"><div><label for="k-end">Last day (optional)</label><input id="k-end" type="date"></div><div><label for="k-note">Who is it for?</label><input id="k-note" maxlength="80" placeholder="Zostel Old Manali"></div></div>'+
    '<div class="acts"><button class="sm pop" data-ksave type="button">Save code</button></div><p class="msg" id="k-msg" role="status"></p></div>'+
    (d.codes.length?d.codes.map(function(c){return '<div class="box"><div class="t"><b>'+esc(c.code)+'</b><span class="tag">'+(c.paused?'Paused':'Running')+'</span></div><div class="mute">'+(c.kind==='flat'?rs(c.value)+' off':c.value+'% off')+(c.min?' on orders of '+rs(c.min)+' or more':'')+'</div><div class="dim">Used '+(c.used||0)+(c.limit?' of '+c.limit:'')+' times'+(c.ends?' · ends '+esc(c.ends):'')+(c.note?' · '+esc(c.note):'')+'</div><div class="acts"><button class="sm" data-kp="'+esc(c.code)+'">'+(c.paused?'Start again':'Pause')+'</button><button class="sm" data-kd="'+esc(c.code)+'">Delete</button></div></div>';}).join(''):'<p class="mute">No codes yet.</p>')+
+   '<h2>Thank-you for a first order</h2><div class="box"><label class="tog" for="th-on" style="margin-top:0"><span>Give first-time customers a code for their next order</span><input id="th-on" type="checkbox"'+(d.thanks.on?' checked':'')+'></label><div class="r2"><div><label for="th-pct">Percent off</label><input id="th-pct" inputmode="numeric" value="'+d.thanks.pct+'"></div><div><label for="th-days">Good for (days)</label><input id="th-days" inputmode="numeric" value="'+d.thanks.days+'"></div></div><div class="acts"><button class="sm pop" data-thsave type="button">Save</button></div><p class="dim" style="margin:8px 0 0">Made by itself when you mark a customer\'s first order as shipped. It is added to the tracking message you send, and shows on their order page. One use only. Repeat customers do not get one.</p><p class="msg" id="th-msg" role="status"></p></div>'+
    '<h2>Buy more, save more</h2><div class="box"><label class="tog" for="b-on" style="margin-top:0"><span>Give money off when someone buys several pieces</span><input id="b-on" type="checkbox"'+(b.on?' checked':'')+'></label><div class="r2"><div><label for="b-n">Pieces in the bag</label><input id="b-n" inputmode="numeric" value="'+b.n+'"></div><div><label for="b-pct">Percent off the lot</label><input id="b-pct" inputmode="numeric" value="'+b.pct+'"></div></div><div class="acts"><button class="sm pop" data-bsave type="button">Save offer</button></div><p class="dim" style="margin:8px 0 0">The shop shows it in the bag. A customer gets this or a code, whichever saves them more, never both.</p><p class="msg" id="b-msg" role="status"></p></div>';
   $('codes')._list=d.codes;
  }).catch(function(e){$('codes').textContent=e.message;});}
@@ -730,6 +732,7 @@ $('codes').onclick=function(e){
       if(!confirm('Mark down '+r.count+' piece'+(r.count>1?'s':'')+' by '+parseInt(sb.pct,10)+'%?'))return;
       sb.preview=false;return api('sale',sb).then(loadCodes);
     }).catch(function(x){say('s-msg',x.message,'bad');});return;}
+  if(b.hasAttribute('data-thsave')){api('thanks',{on:$('th-on').checked,pct:$('th-pct').value,days:$('th-days').value}).then(function(){say('th-msg',$('th-on').checked?'Saved. It is on.':'Saved. It is off.','good');}).catch(function(x){say('th-msg',x.message,'bad');});return;}
   if(b.hasAttribute('data-send')){if(confirm('End the sale and put every price back to normal?'))api('sale-end',{}).then(loadCodes);return;}
   if(b.hasAttribute('data-k')){codeKind=b.getAttribute('data-k');[].forEach.call(b.parentNode.children,function(x){x.classList.toggle('on',x===b);});}
   else if(b.hasAttribute('data-ksave'))api('code',{code:$('k-code').value,kind:codeKind,value:$('k-val').value,min:$('k-min').value,limit:$('k-lim').value,ends:$('k-end').value,note:$('k-note').value}).then(loadCodes).catch(function(x){say('k-msg',x.message,'bad');});
