@@ -56,6 +56,7 @@ async function init(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, product_id TEXT, type TEXT, bytes BLOB)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS guides (slug TEXT PRIMARY KEY, data TEXT, published INTEGER, at TEXT)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS subscribers (phone TEXT PRIMARY KEY, data TEXT, at TEXT)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, phone TEXT, status TEXT, data TEXT, at TEXT)'),
   ]);
   ready = true;
 }
@@ -335,6 +336,10 @@ async function admin(request, env, path, ctx) {
   }
   if (path === '/api/admin/products' && request.method === 'GET') return json({ products: await allProducts(request, env, ctx, true), hideSamples: (await setting(env, 'hide_samples')) === '1' });
   if (path === '/api/admin/stats' && request.method === 'GET') return stats(request, env, ctx);
+  if (path === '/api/admin/offers' && request.method === 'GET') {
+    const rows = await env.DB.prepare('SELECT id, phone, status, data, at FROM offers ORDER BY at DESC LIMIT 300').all();
+    return json({ offers: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), id: r.id, phone: r.phone, status: r.status, at: r.at })) });
+  }
   if (path === '/api/admin/alerts' && request.method === 'GET') {
     const rows = await env.DB.prepare('SELECT phone, data, at FROM subscribers ORDER BY at DESC LIMIT 5000').all();
     return json({ people: (rows.results || []).map((r) => ({ ...JSON.parse(r.data), phone: r.phone, at: r.at })) });
@@ -396,6 +401,14 @@ async function admin(request, env, path, ctx) {
     return json({ ok: true, slug: slugv });
   }
   if (path === '/api/admin/guide-delete') { await env.DB.prepare('DELETE FROM guides WHERE slug = ?').bind(String(body.slug)).run(); return json({ ok: true }); }
+  if (path === '/api/admin/offer-status') {
+    const st = ['new', 'replied', 'bought', 'passed'].includes(body.status) ? body.status : '';
+    if (!st || !body.id) return json({ error: 'bad_request' }, 400);
+    await env.DB.prepare('UPDATE offers SET status = ? WHERE id = ?').bind(st, String(body.id)).run(); return json({ ok: true });
+  }
+  if (path === '/api/admin/offer-delete') {
+    await env.DB.batch([env.DB.prepare('DELETE FROM offers WHERE id = ?').bind(String(body.id)), env.DB.prepare('DELETE FROM images WHERE product_id = ?').bind(String(body.id))]); return json({ ok: true });
+  }
   if (path === '/api/admin/alert-delete') { await env.DB.prepare('DELETE FROM subscribers WHERE phone = ?').bind(String(body.phone)).run(); return json({ ok: true }); }
   if (path === '/api/admin/banner') { await saveSetting(env, 'banner', clean(body.text, 140) || '-'); return json({ ok: true }); }
   if (path === '/api/admin/samples') { await saveSetting(env, 'hide_samples', body.hide ? '1' : '0'); return json({ ok: true }); }
@@ -688,6 +701,36 @@ export default {
       if (url.pathname === '/api/config') return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env) });
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);
+      // Someone offering gear to sell, with photos. Lands in the owners' app.
+      if (url.pathname === '/api/sell' && request.method === 'POST') {
+        const b = await request.json().catch(() => ({}));
+        const name = clean(b.name, 60), phone = clean(b.phone, 20).replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, ''), what = clean(b.what, 800);
+        if (!name || phone.length !== 10 || !what) return json({ error: 'details', message: 'Add your name, a 10-digit WhatsApp number and a few words about the gear.' }, 400);
+        const pics = Array.isArray(b.images) ? b.images.slice(0, 8) : [];
+        const day = new Date(Date.now() - 864e5).toISOString();
+        const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM offers WHERE phone = ? AND at > ?').bind(phone, day).first();
+        if (recent && recent.n >= 5) return json({ error: 'busy', message: 'You have sent a few already today. Message us on WhatsApp for the rest.' }, 429);
+        const id = 'o' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
+        const stmts = [], photos = [];
+        for (let n = 0; n < pics.length; n++) {
+          const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(String(pics[n]));
+          if (!m) continue;
+          const bin = atob(m[2]); if (bin.length > 1500000) continue;
+          const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          stmts.push(env.DB.prepare('INSERT INTO images (id, product_id, type, bytes) VALUES (?, ?, ?, ?)').bind(id + '-' + n, id, m[1], bytes));
+          photos.push('/img/' + id + '-' + n);
+        }
+        const data = { name, city: clean(b.city, 60), kind: clean(b.kind, 60), what, asking: clean(b.asking, 40), photos };
+        stmts.push(env.DB.prepare('INSERT INTO offers (id, phone, status, data, at) VALUES (?, ?, ?, ?, ?)').bind(id, phone, 'new', JSON.stringify(data), new Date().toISOString()));
+        await env.DB.batch(stmts);
+        const text = 'Gear offered for sale by ' + name + ' (' + phone + ')' + (data.city ? ', ' + data.city : '') + '\n' + what + '\n' + photos.length + ' photo(s). Open the owner app to see them.';
+        const jobs = [];
+        if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) jobs.push(fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/sendMessage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text }) }));
+        if (env.RESEND_API_KEY && env.NOTIFY_EMAIL) jobs.push(fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.RESEND_API_KEY },
+          body: JSON.stringify({ from: env.EMAIL_FROM || 'The Mountain Thrifters <orders@mountainthrifters.com>', to: env.NOTIFY_EMAIL.split(',').map((x) => x.trim()), subject: 'Gear offered: ' + name, text }) }));
+        ctx.waitUntil(Promise.allSettled(jobs));
+        return json({ ok: true, id, photos: photos.length });
+      }
       // Drop alerts sign-up: saved straight onto the list the owners see in their app.
       if (url.pathname === '/api/alerts' && request.method === 'POST') {
         const b = await request.json().catch(() => ({}));
