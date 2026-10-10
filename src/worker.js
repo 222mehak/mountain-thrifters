@@ -85,7 +85,7 @@ async function policies(env) {
       '<p>Questions: ' + reach + '.</p>' },
     returns: { title: 'Returns, refunds and cancellations', desc: 'Return any piece within 5 days of receiving it. How returns, refunds and cancellations work at The Mountain Thrifters.', html:
       '<h2>Returns</h2><p>If a piece is not right, you can return it within 5 days of receiving it.</p>' +
-      '<ul><li>Message us on WhatsApp with your order number and tell us what is wrong.</li><li>We arrange the return and we pay for the return shipping.</li><li>Send it back as it arrived: unwashed, not worn beyond trying it on, with anything that came with it.</li></ul>' +
+      '<ul><li>Message us on WhatsApp with your order number and tell us what is wrong.</li><li>We tell you where to send it. You pay for the return shipping.</li><li>Send it back as it arrived: unwashed, not worn beyond trying it on, with anything that came with it.</li></ul>' +
       '<h2>Refunds</h2><p>Once the piece is back with us and we have checked it, we refund what you paid for it, to the same method you paid with.</p>' +
       '<h2>Cancellations</h2><p>You can cancel any time before your order ships. Message us on WhatsApp and we refund the full amount. Once it has shipped, it is handled as a return.</p>' +
       '<h2>Thrifted pieces</h2><p>Most of what we sell has been worn before. We describe the condition and show any flaws in the photos. If something you receive does not match the listing, tell us and we will make it right.</p>' +
