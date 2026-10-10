@@ -597,7 +597,8 @@ $('a-go').onclick=function(){
 
 // ----- orders -----
 var COURIERS=['India Post','Delhivery','DTDC','Blue Dart','Other'],shipOpen='';
-function trackMsg(o){return 'Hi '+String(o.name).split(' ')[0]+', your Mountain Thrifters order '+o.id+' is on its way from Manali.'+(o.courier?'\nCourier: '+o.courier:'')+(o.tracking?'\nTracking number: '+o.tracking:'')+'\nThanks for buying from us. Send us a photo when it arrives!';}
+function oLink(o){return o.key?SHOP+'/order/'+o.id+'?k='+o.key:'';}
+function trackMsg(o){return 'Hi '+String(o.name).split(' ')[0]+', your Mountain Thrifters order '+o.id+' is on its way from Manali.'+(o.courier?'\nCourier: '+o.courier:'')+(o.tracking?'\nTracking number: '+o.tracking:'')+(oLink(o)?'\nYour order page: '+oLink(o):'')+'\nThanks for buying from us. Send us a photo when it arrives!';}
 function loadOrders(){
   api('orders').then(function(d){
     if(!d.orders.length){$('orders').innerHTML='No orders yet.';return;}
@@ -613,10 +614,11 @@ function loadOrders(){
         '<div class="t" style="margin-top:6px"><b>'+esc(o.id)+'</b><b>'+rs(o.total)+'</b></div>'+
         (o.items||[]).map(function(i){return '<div class="mute">'+esc(i.name)+(i.size?' ('+esc(i.size)+')':'')+'</div>';}).join('')+
         (o.discount?'<div class="dim">'+esc(o.discountLabel||'Discount')+': minus '+rs(o.discount)+'</div>':'')+(o.shipping?'<div class="dim">Shipping: '+rs(o.shipping)+'</div>':'')+
+        (o.utr&&o.status==='awaiting payment'?'<div style="margin-top:8px;border-left:3px solid var(--pop);padding-left:10px"><b>Customer says they paid.</b><br>UPI reference: <b>'+esc(o.utr)+'</b><div class="dim">Find this number in your UPI app, then tap Payment received.</div></div>':o.utr?'<div class="dim">UPI reference: '+esc(o.utr)+'</div>':'')+
         '<div style="margin-top:8px">'+esc(o.name)+', '+esc(o.phone)+'</div><div class="dim">'+esc(o.address)+', '+esc(o.city)+' '+esc(o.pincode)+'</div>'+
         (o.courier||o.tracking?'<div class="dim" style="margin-top:6px">Sent with '+esc(o.courier||'courier')+(o.tracking?', tracking '+esc(o.tracking):'')+'</div>':'')+
         (last?'<div class="dim">Marked '+esc(last.s)+' by '+esc(last.who)+'</div>':'')+
-        '<div class="acts">'+acts+'<a class="sm" href="https://wa.me/91'+esc(o.phone)+'" target="_blank" rel="noopener">WhatsApp customer</a></div>'+form+'</div>';
+        '<div class="acts">'+acts+'<a class="sm" href="https://wa.me/91'+esc(o.phone)+'" target="_blank" rel="noopener">WhatsApp customer</a>'+(oLink(o)?'<a class="sm" href="'+esc(oLink(o).replace(SHOP,''))+'" target="_blank" rel="noopener">Customer\'s order page</a>':'')+'</div>'+form+'</div>';
     }).join('');
   }).catch(function(e){$('orders').textContent=e.message;});
 }

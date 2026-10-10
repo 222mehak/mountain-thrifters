@@ -176,6 +176,9 @@ textarea{min-height:96px;resize:vertical}
 .step .fl{margin-bottom:8px}
 .step p{margin:0 0 16px}
 .upi{font-size:18px;word-break:break-all}
+.qrbox{background:#fff;padding:12px;width:204px;margin:0 0 14px}.qrbox svg{display:block;width:180px;height:180px}
+.track{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:22px 0 4px}.track div{border-top:3px solid var(--edge);padding-top:8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}.track div.on{border-color:var(--pop);color:var(--ink)}
+.refrow{display:flex;gap:8px}.refrow input{flex:1}.refrow button{flex:none;min-height:48px;padding:0 18px;background:var(--ink);border:1px solid var(--ink);color:var(--bg);cursor:pointer;font-weight:600}
 
 @media (max-width:900px){
 .wrap{padding:0 16px}
@@ -225,7 +228,7 @@ section{padding:60px 0}
 <div class="wrap">
 <div>The Mountain Thrifters, Manali, Himachal Pradesh.<br>Outdoor gear, thrifted and new. Shipped across India.</div>
 <div><a href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Instagram @mountain_thrifters</a><br><a href="/request" data-link>Ask us to find something</a><br><a href="#" id="fwa" target="_blank" rel="noopener">Message us on WhatsApp</a><br>Call or WhatsApp: <a href="tel:+919317568898">+91 93175 68898</a></div>
-<div><a href="/contact" data-link>Contact</a><br><a href="/shipping" data-link>Shipping</a><br><a href="/returns" data-link>Returns and refunds</a><br><a href="/privacy" data-link>Privacy</a><br><a href="/terms" data-link>Terms</a></div>
+<div><span id="fo" hidden><a href="#" data-link>Your last order</a><br></span><a href="/contact" data-link>Contact</a><br><a href="/shipping" data-link>Shipping</a><br><a href="/returns" data-link>Returns and refunds</a><br><a href="/privacy" data-link>Privacy</a><br><a href="/terms" data-link>Terms</a></div>
 </div>
 </footer>
 
@@ -493,8 +496,43 @@ function placeOrder(form){
       if(res.j.error==='sold'||res.j.error==='unknown'){load().then(function(){setBag(bagItems().map(function(p){return p.id;}));checkout(res.j.message);});return;}
       err.textContent=res.j.message||'Could not place the order. Please try again.';btn.disabled=false;btn.textContent='Place order';return;
     }
-    S.done={r:res.j,c:body};codeQ=null;setBag([]);load();go('/done',true);
+    S.done={r:res.j,c:body};codeQ=null;setBag([]);load();
+    if(res.j.key){var link='/order/'+res.j.orderId+'?k='+res.j.key;try{localStorage.setItem('mt_order',link);}catch(e){}lastOrder();go(link,true);}else go('/done',true);
   }).catch(function(){err.textContent='Could not reach the shop. Check your connection and try again.';btn.disabled=false;btn.textContent='Place order';});
+}
+// ----- the customer's order page: pay, send the reference, follow the parcel -----
+function lastOrder(){var l='';try{l=localStorage.getItem('mt_order')||'';}catch(e){}var el=document.getElementById('fo');if(el){el.hidden=!l;el.querySelector('a').setAttribute('href',l||'#');}}
+function needQr(){return window.qrcode?Promise.resolve():new Promise(function(ok,no){var s=document.createElement('script');s.src='/qrcode.js';s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
+function orderPage(id){
+  var k=new URLSearchParams(location.search).get('k')||'',here=location.pathname+location.search;
+  app.innerHTML='<div class="wrap page mute">Loading your order…</div>';
+  fetch('/api/order-status?id='+encodeURIComponent(id)+'&k='+encodeURIComponent(k)).then(function(r){return r.json();}).then(function(o){
+    if(location.pathname+location.search!==here)return;
+    if(!o.id){app.innerHTML='<div class="wrap page"><div class="narrow"><h1>Order not found</h1><p class="mute">'+esc(o.message||'Open the link from your order message again.')+'</p><a class="btn wa" href="'+esc(waLink('Hi Mountain Thrifters! I need help finding my order.'))+'" target="_blank" rel="noopener">Ask us on WhatsApp</a></div></div>';return;}
+    S.wa=o.whatsapp||S.wa;
+    var c=S.done&&S.done.r&&S.done.r.orderId===o.id?S.done.c:null,url=location.origin+here;
+    var lines=(o.items||[]).map(function(i){return '- '+i.name+(i.size?' ('+i.size+')':'')+' '+rs(i.price);}).join('\n');
+    var text='Hi Mountain Thrifters! I have placed order '+o.id+'.\n'+lines+(o.discount?'\n'+o.discountLabel+': minus '+rs(o.discount):'')+(o.shipping?'\nShipping: '+rs(o.shipping):'')+'\nTotal: '+rs(o.total)+
+      (c?'\nName: '+c.name+'\nPhone: '+c.phone+'\nDeliver to: '+c.address+', '+[c.city,c.pincode].filter(Boolean).join(' '):'')+'\nMy order page: '+url;
+    var upi=o.upiId?'upi://pay?pa='+encodeURIComponent(o.upiId)+'&pn='+encodeURIComponent(o.upiName)+'&am='+o.total+'&cu=INR&tn='+encodeURIComponent('Order '+o.id):'';
+    var stage={'awaiting payment':0,paid:1,shipped:2,delivered:3}[o.status];
+    var head={'awaiting payment':'Thanks, '+o.first+'. Held for you.',paid:'Payment received. Thank you, '+o.first+'.',shipped:'On its way, '+o.first+'.',delivered:'Delivered. Enjoy it, '+o.first+'.',cancelled:'This order was cancelled.'}[o.status]||'Your order';
+    var h='<div class="wrap page"><div class="narrow"><div class="eye">Order '+esc(o.id)+'</div><h1 style="margin-top:10px">'+esc(head)+'</h1>'+
+      (o.status==='cancelled'?'':'<div class="track">'+['Placed','Paid','Shipped','Delivered'].map(function(t,i){return '<div class="'+(i<=stage?'on':'')+'">'+t+'</div>';}).join('')+'</div>');
+    if(o.status==='awaiting payment'){
+      h+='<div class="step"><div class="fl">Step 1 · Pay '+rs(o.total)+' by UPI</div>'+(upi?'<p class="upi">'+esc(o.upiId)+'</p><div class="qrbox" id="oqr" hidden></div><a class="btn pop wide" href="'+esc(upi)+'">Open my UPI app</a><p class="dim" style="font-size:14px;margin:14px 0 0">On a computer? Scan the code with any UPI app on your phone. Check the name shows as '+esc(o.upiName)+' before you pay.</p>':'<p style="margin:0">We will send you the payment details on WhatsApp.</p>')+'</div>'+
+        '<div class="step"><div class="fl">Step 2 · Tell us you have paid</div>'+(o.utr?'<p style="margin:0">Got it. Reference <b>'+esc(o.utr)+'</b>. We check and confirm on WhatsApp, usually within a few hours.</p>':'<p>Type the UPI reference number from your payment. It is usually 12 digits, shown as "UPI Ref No" or "UTR" in your UPI app.</p><form id="reff"><div class="refrow"><input name="ref" inputmode="numeric" autocomplete="off" aria-label="UPI reference number" placeholder="12-digit reference"><button>Send</button></div><p class="err" id="referr" role="alert" style="margin:10px 0 0"></p></form>')+'</div>'+
+        '<div class="step"><div class="fl">Step 3 · Send your order on WhatsApp</div><p>So we have your number and can message you when it ships.</p><a class="btn wa wide" href="'+esc(waLink(text))+'" target="_blank" rel="noopener">Send order on WhatsApp</a></div>';
+    }else if(o.status==='paid')h+='<div class="step"><p style="margin:0">We dispatch within 24 hours and message you on WhatsApp with the tracking number. It will also show on this page.</p></div>';
+    else if(o.status==='shipped'||o.status==='delivered')h+='<div class="step"><div class="fl">'+(o.status==='shipped'?'Sent from Manali':'Delivered')+'</div>'+(o.courier||o.tracking?'<p style="margin:0">'+(o.courier?'Courier: <b>'+esc(o.courier)+'</b><br>':'')+(o.tracking?'Tracking number: <b>'+esc(o.tracking)+'</b>':'')+'</p>':'<p style="margin:0">We will add the tracking number here soon.</p>')+'</div>';
+    else if(o.status==='cancelled')h+='<div class="step"><p style="margin:0">If you already paid, message us and we will refund you.</p></div>';
+    h+='<div style="margin-top:28px">'+(o.items||[]).map(function(i){return '<div class="sumrow"><span>'+esc(i.name)+(i.size?' ('+esc(i.size)+')':'')+'</span><span>'+rs(i.price)+'</span></div>';}).join('')+
+      (o.discount?'<div class="sumrow"><span>'+esc(o.discountLabel)+'</span><span>minus '+rs(o.discount)+'</span></div>':'')+(o.shipping?'<div class="sumrow"><span>Shipping</span><span>'+rs(o.shipping)+'</span></div>':'')+
+      '<div class="total" style="padding-top:8px"><span>Total</span><span>'+rs(o.total)+'</span></div></div>'+
+      '<p class="dim" style="font-size:14px">Keep this page. It updates when we confirm your payment and when your parcel ships. <a href="/returns" data-link>Returns</a> · <a href="'+esc(waLink('Hi Mountain Thrifters! A question about order '+o.id+'.'))+'" target="_blank" rel="noopener">Ask us on WhatsApp</a></p></div></div>';
+    app.innerHTML=h;
+    if(upi&&o.status==='awaiting payment')needQr().then(function(){var el=document.getElementById('oqr');if(!el)return;var q=qrcode(0,'M');q.addData(upi);q.make();el.innerHTML=q.createSvgTag({cellSize:4,margin:0,scalable:true});el.hidden=false;}).catch(function(){});
+  }).catch(function(){app.innerHTML='<div class="wrap page"><p class="mute">Could not load your order. Check your connection and try again.</p></div>';});
 }
 function done(){
   if(!S.done){go('/shop',true);return;}
@@ -591,7 +629,7 @@ function drawFeed(){
 }
 
 // ----- routing -----
-var TITLES={shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',alerts:'Get drop alerts',request:'Ask us to find it',guides:'Mountain gear guides',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
+var TITLES={order:'Your order',shop:'Shop thrifted outdoor gear',sell:'Sell your outdoor gear',feed:'Shop our Instagram',alerts:'Get drop alerts',request:'Ask us to find it',guides:'Mountain gear guides',bag:'Your bag',checkout:'Checkout',done:'Order placed'};
 function render(){
   var path=location.pathname.replace(/\/+$/,'')||'/',name=path.split('/')[1]||'home';
   document.body.classList.toggle('home',path==='/');
@@ -607,6 +645,7 @@ function render(){
   else if(path==='/bag')bagView();
   else if(path==='/checkout')checkout();
   else if(path==='/done')done();
+  else if(path.indexOf('/order/')===0)orderPage(decodeURIComponent(path.slice(7)));
   else if(path==='/sell')sell();
   else if(path==='/feed')feed();
   else if(path==='/alerts')alerts();
@@ -640,6 +679,11 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('submit',function(e){
   if(e.target.id==='co'){e.preventDefault();placeOrder(e.target);}
+  if(e.target.id==='reff'){e.preventDefault();var ff=e.target,fb=ff.querySelector('button'),fe=document.getElementById('referr'),oid=decodeURIComponent(location.pathname.slice(7));
+    fb.disabled=true;fe.textContent='';
+    fetch('/api/order-ref',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:oid,k:new URLSearchParams(location.search).get('k'),ref:new FormData(ff).get('ref')})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(res){
+      if(!res.ok){fe.textContent=res.j.message||'That did not send. Please try again.';fb.disabled=false;return;}orderPage(oid);
+    }).catch(function(){fe.textContent='Could not reach the shop. Check your connection and try again.';fb.disabled=false;});}
   if(e.target.id==='rf'){e.preventDefault();var rf=e.target,rd=new FormData(rf),rb=rf.querySelector('button'),re2=document.getElementById('rerr');
     rb.disabled=true;re2.textContent='';
     fetch('/api/request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:rd.get('name'),phone:rd.get('phone'),what:rd.get('what'),size:rd.get('size'),budget:rd.get('budget'),like:rd.get('like'),alerts:!!rd.get('alerts')})})
@@ -667,7 +711,7 @@ document.addEventListener('submit',function(e){
        '<div class="step"><p>Want a faster reply? Say hi on WhatsApp so your message is at the top of our chats.</p><a class="btn wa wide" href="'+esc(waLink('Hi Mountain Thrifters! I just sent gear to sell through the site. I am '+d.get('name')+'.'))+'" target="_blank" rel="noopener">Say hi on WhatsApp</a></div><a class="btn ghost" href="/shop" data-link>Back to the shop</a></div></div>';window.scrollTo(0,0);
      }).catch(function(){se.textContent='Could not reach the shop. Check your connection and try again.';sb.disabled=false;sb.textContent='Send it to us';});}
 });
-bagCount();
+bagCount();lastOrder();
 load().then(render);
 })();
 </script>

@@ -330,7 +330,9 @@ async function placeOrder(request, env, ctx) {
   if (deal.off) { let left = deal.off; items.forEach((i, n) => { const cut = n === items.length - 1 ? left : Math.round(deal.off * i.price / subtotal); left -= cut; i.paid = i.price - cut; }); }
   const id = 'MT' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 1296).toString(36).toUpperCase().padStart(2, '0');
   const at = new Date().toISOString();
-  const order = { id, items, total, name, phone, pincode, city, address };
+  // A private key in the order link, so only the customer can open their order page.
+  const key = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  const order = { id, key, items, total, name, phone, pincode, city, address };
   if (shipping) order.shipping = shipping;
   if (deal.off) { order.subtotal = subtotal; order.discount = deal.off; order.discountLabel = deal.label; order.code = deal.code; }
   // One batch: if any piece was taken a moment ago, nothing is saved.
@@ -343,7 +345,7 @@ async function placeOrder(request, env, ctx) {
   try { await env.DB.batch(stmts); }
   catch (e) { return json({ error: 'sold', message: 'Someone bought one of these a moment ago. Your bag has been updated.' }, 409); }
   ctx.waitUntil(notify(env, order));
-  return json({ orderId: id, total, shipping, discount: deal.off, discountLabel: deal.label, items: items.map((i) => ({ name: i.name, size: i.size, price: i.price })), upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
+  return json({ orderId: id, key, total, shipping, discount: deal.off, discountLabel: deal.label, items: items.map((i) => ({ name: i.name, size: i.size, price: i.price })), upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
 }
 
 // ---------- Admin ----------
@@ -868,7 +870,7 @@ async function site(request, env, ctx, url) {
     if (!row) return new Response('Not found', { status: 404 });
     return new Response(new Uint8Array(row.bytes), { headers: { 'content-type': row.type, 'cache-control': 'public, max-age=31536000, immutable' } });
   }
-  if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /bag\nDisallow: /checkout\nDisallow: /done\n\nSitemap: ' + SITE + '/sitemap.xml\n', { headers: { 'content-type': 'text/plain' } });
+  if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /bag\nDisallow: /checkout\nDisallow: /done\nDisallow: /order\n\nSitemap: ' + SITE + '/sitemap.xml\n', { headers: { 'content-type': 'text/plain' } });
   if (path === '/sitemap.xml') {
     await init(env);
     const products = (await allProducts(request, env, ctx)).filter((p) => !p.sold && !p.sample);
@@ -885,8 +887,9 @@ async function site(request, env, ctx, url) {
       '\n</urlset>\n', { headers: { 'content-type': 'application/xml' } });
   }
   const isProduct = path.startsWith('/p/'), isCat = path.startsWith('/c/'), isGuide = path === '/guides' || path.startsWith('/guides/');
+  const isOrder = path.startsWith('/order/');
   const POL = ['/contact', '/shipping', '/returns', '/privacy', '/terms'], isPolicy = POL.includes(path);
-  if (!isProduct && !isCat && !isGuide && !isPolicy && !(path in PAGES)) return env.ASSETS.fetch(request);
+  if (!isProduct && !isCat && !isGuide && !isPolicy && !isOrder && !(path in PAGES)) return env.ASSETS.fetch(request);
   // Every shop page is the same app shell, with the title, description and a
   // plain-HTML copy of the content written in for search engines and link previews.
   const shell = await env.ASSETS.fetch(new Request(new URL('/', url)));
@@ -921,6 +924,8 @@ async function site(request, env, ctx, url) {
       const crumbs = [['Shop', '/shop']].concat(p.category ? [[p.category, '/c/' + slug(p.category)]] : []).concat(p.sub ? [[p.sub, '/c/' + slug(p.sub)]] : []).concat([[full, path]]);
       ld.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c[0], item: SITE + c[1] })) });
     } else { status = 404; noindex = true; title = 'This piece is gone'; body = '<h1>This piece is gone</h1><p><a href="/shop">See what is still here.</a></p>'; }
+  } else if (isOrder) {
+    title = 'Your order'; noindex = true;
   } else if (isPolicy) {
     await init(env);
     const pg = (await policies(env))[path.slice(1)];
@@ -1005,6 +1010,25 @@ export default {
       if (url.pathname === '/api/policy') { const pg = (await policies(env))[url.searchParams.get('p') || '']; return pg ? json({ title: pg.title, html: pg.html }) : json({ error: 'not_found' }, 404); }
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);
+      // The customer's own order page: status, tracking and how to pay. Needs the key from their link.
+      if (url.pathname === '/api/order-status' || url.pathname === '/api/order-ref') {
+        const b = request.method === 'POST' ? await request.json().catch(() => ({})) : { id: url.searchParams.get('id'), k: url.searchParams.get('k') };
+        const row = await env.DB.prepare('SELECT status, data, at FROM orders WHERE id = ?').bind(String(b.id || '')).first();
+        const o = row ? JSON.parse(row.data) : null;
+        if (!o || !o.key || o.key !== String(b.k || '')) return json({ error: 'not_found', message: 'We could not find that order. Open the link from your order message again.' }, 404);
+        if (url.pathname === '/api/order-ref') {
+          const ref = clean(b.ref, 40).replace(/[^A-Za-z0-9]/g, '');
+          if (ref.length < 6 || ref.length > 30) return json({ error: 'details', message: 'That does not look like a UPI reference number. It is usually 12 digits, shown in your UPI app after paying.' }, 400);
+          if (row.status !== 'awaiting payment') return json({ ok: true });
+          o.utr = ref; o.utrAt = new Date().toISOString();
+          await env.DB.prepare('UPDATE orders SET data = ? WHERE id = ?').bind(JSON.stringify(o), o.id).run();
+          ctx.waitUntil(tg(env, 'Order ' + o.id + ': ' + o.name + ' says they have paid Rs ' + o.total + '.\nUPI reference: ' + ref + '\nCheck your UPI app, then tap Payment received.'));
+          return json({ ok: true });
+        }
+        return json({ id: o.id, status: row.status, at: row.at, items: (o.items || []).map((i) => ({ name: i.name, size: i.size, price: i.price })), total: o.total, shipping: o.shipping || 0,
+          discount: o.discount || 0, discountLabel: o.discountLabel || '', courier: o.courier || '', tracking: o.tracking || '', utr: o.utr || '', first: String(o.name).split(' ')[0], city: o.city || '',
+          upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
+      }
       // A customer asking us to find something: either "one like this sold piece" or anything they describe.
       if (url.pathname === '/api/request' && request.method === 'POST') {
         const b = await request.json().catch(() => ({}));
