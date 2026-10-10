@@ -246,6 +246,8 @@ details.ph>summary::-webkit-details-marker{display:none}
 <div class="seg" id="a-when"><button type="button" class="on" data-w="now">Now</button><button type="button" data-w="drop">Next drop</button><button type="button" data-w="draft">Save as draft</button></div>
 <p class="dim" id="a-whenhint" style="margin:6px 0 0"></p>
 <label class="tog" for="a-ig" id="a-igrow"><span>Also post to Instagram</span><input id="a-ig" type="checkbox"></label>
+<label class="tog" for="a-fb" id="a-fbrow"><span>Also post to Facebook</span><input id="a-fb" type="checkbox"></label>
+<p class="dim" style="margin:6px 0 0">Both off means it goes on the website only.</p>
 <p class="dim" id="igstate" style="margin:6px 0 0"></p>
 <button class="btn" id="a-go" type="button">Put it live</button>
 <p class="msg" id="a-msg" role="status"></p>
@@ -473,8 +475,9 @@ function profitHint(){var p=parseInt($('a-price').value,10),c=parseInt($('a-cost
 $('a-price').oninput=$('a-cost').oninput=profitHint;
 if(mem('for'))$('a-gender').value=mem('for');
 drawGender();
-(function(){var c=mem('cond');if(c)[].forEach.call($('a-cond').children,function(x){x.classList.toggle('on',x.textContent===c);});$('a-ig').checked=mem('ig')==='1';})();
+(function(){var c=mem('cond');if(c)[].forEach.call($('a-cond').children,function(x){x.classList.toggle('on',x.textContent===c);});$('a-ig').checked=mem('ig')==='1';$('a-fb').checked=(mem('fb')||mem('ig'))==='1';})();
 $('a-ig').onchange=function(){mem('ig',this.checked?'1':'0');};
+$('a-fb').onchange=function(){mem('fb',this.checked?'1':'0');};
 function drawShots(){
   $('shots').innerHTML=(shots.length<6?'<label class="take" for="file"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>'+(shots.length?'Add more':'Take photos')+'</label>':'')+
     shots.map(function(s,i){return '<div><img src="'+s+'" alt="Photo '+(i+1)+'"><button class="x" type="button" data-x="'+i+'" aria-label="Remove photo '+(i+1)+'">×</button></div>';}).join('');
@@ -530,7 +533,7 @@ $('a-when').onclick=function(e){var b=e.target.closest('button');if(b)setWhen(b.
 function fillSrc(v){$('a-src').innerHTML='<option value="">Not set</option>'+trips.map(function(t){return '<option value="'+esc(t.id)+'">'+esc(t.date+' · '+t.where)+'</option>';}).join('');$('a-src').value=v||'';}
 function loadTrips(){return api('sourcing').then(function(d){trips=d.trips;fillSrc($('a-src').value);}).catch(function(){});}
 function clearForm(){shots=[];drawShots();['a-name','a-brand','a-price','a-cost','a-size','a-desc','a-weight','a-tlink'].forEach(function(i){$(i).value='';});wpSel='';techSel=[];$('a-tested').checked=false;$('a-src').value='';drawTech();profitHint();fillSubs();}
-function clearEdit(){editId='';clearForm();$('a-h1').textContent='Add stock';$('a-cancel').hidden=true;$('e-info').hidden=true;$('a-bulkbox').hidden=false;$('a-igrow').hidden=false;$('a-ig').checked=mem('ig')==='1';$('a-match').innerHTML='';say('a-msg','');setWhen('now');}
+function clearEdit(){editId='';clearForm();$('a-h1').textContent='Add stock';$('a-cancel').hidden=true;$('e-info').hidden=true;$('a-bulkbox').hidden=false;$('a-igrow').hidden=false;$('a-ig').checked=mem('ig')==='1';$('a-fbrow').hidden=false;$('a-fb').checked=(mem('fb')||mem('ig'))==='1';$('a-match').innerHTML='';say('a-msg','');setWhen('now');}
 $('a-cancel').onclick=function(){clearEdit();show('stock');};
 function startEdit(p){
   editId=p.id;show('add');$('a-h1').textContent='Edit piece';$('a-cancel').hidden=false;$('a-bulkbox').hidden=true;say('a-top','');say('a-msg','');$('a-match').innerHTML='';
@@ -542,7 +545,7 @@ function startEdit(p){
   if(p.condition)[].forEach.call($('a-cond').children,function(x){x.classList.toggle('on',x.textContent===p.condition);});
   wpSel=p.waterproof||'';techSel=(p.tech||[]).slice();drawTech();$('a-weight').value=p.weight||'';$('a-tlink').value=p.testedLink||'';$('a-tested').checked=!!p.tested;
   $('a-price').value=p.price||'';$('a-cost').value=p.cost!=null?p.cost:'';profitHint();fillSrc(p.source);$('a-desc').value=p.description||'';
-  $('a-igrow').hidden=!!p.igPosted;$('a-ig').checked=!!p.igPending;
+  $('a-igrow').hidden=!!p.igPosted;$('a-ig').checked=!!p.igPending;$('a-fbrow').hidden=!!p.fbPosted;$('a-fb').checked=p.fbPending===undefined?!!p.igPending:!!p.fbPending;
   setWhen(p.draft?'draft':p.hidden?'drop':'now');
   var live=!p.hidden&&!p.sold;
   $('e-info').hidden=false;
@@ -578,15 +581,15 @@ $('a-go').onclick=function(){
   var btn=this,when=whenVal(),wasEdit=editId;
   var body={images:shots,name:$('a-name').value,brand:$('a-brand').value,price:$('a-price').value,cost:$('a-cost').value,gender:$('a-gender').value,
     waterproof:wpSel,tech:techSel.slice(),weight:$('a-weight').value,tested:$('a-tested').checked,testedLink:(function(v){v=v.trim();return v&&!/^https?:/.test(v)?'https://'+v:v;})($('a-tlink').value),
-    category:$('a-cat').value,sub:$('a-sub').value,size:$('a-size').value,condition:$('a-cond').querySelector('.on').textContent,description:$('a-desc').value,postToInstagram:$('a-ig').checked,when:when,source:$('a-src').value};
-  if(editId){body.id=editId;body.photos=shots;delete body.images;if($('a-igrow').hidden)delete body.postToInstagram;}
+    category:$('a-cat').value,sub:$('a-sub').value,size:$('a-size').value,condition:$('a-cond').querySelector('.on').textContent,description:$('a-desc').value,postToInstagram:$('a-ig').checked,postToFacebook:$('a-fb').checked,when:when,source:$('a-src').value};
+  if(editId){body.id=editId;body.photos=shots;delete body.images;if($('a-igrow').hidden)delete body.postToInstagram;if($('a-fbrow').hidden)delete body.postToFacebook;}
   var need=[[!shots.length,'shots','Add at least one photo.'],[when!=='draft'&&!body.name.trim(),'a-name','Give it a name.'],[when!=='draft'&&!parseInt(body.price,10),'a-price','Add the selling price.']];
   document.querySelectorAll('.miss').forEach(function(x){x.classList.remove('miss');});
   for(var i=0;i<need.length;i++)if(need[i][0]){var el=$(need[i][1]);el.classList.add('miss');el.scrollIntoView({block:'center'});say('a-msg',need[i][2],'bad');return;}
   btn.disabled=true;btn.textContent='Saving…';say('a-msg','');
   (body.postToInstagram?igSafe(shots[0]):Promise.resolve('')).then(function(sq){if(sq)body.igImage=sq;return api(wasEdit?'product-update':'product',body);}).then(function(r){
-    var ig=r.instagram==='posted'?' Posted to Instagram too.':r.instagram==='posted, and on Facebook'?' Posted to Instagram and Facebook too.':(r.instagram&&r.instagram!=='not requested'?' Instagram: '+r.instagram+'.':'');
-    var okIg=!body.postToInstagram||/^(posted|will post)/.test(r.instagram||'');
+    var ig=r.instagram&&r.instagram!=='not requested'?' '+r.instagram.charAt(0).toUpperCase()+r.instagram.slice(1)+'.':'';
+    var okIg=!(body.postToInstagram||body.postToFacebook)||(/^(posted|will post)/.test(r.instagram||'')&&!/, but /.test(r.instagram));
     var what=when==='draft'?'Saved as a draft.':when==='drop'&&r.liveAt?'Lined up for '+dropWhen(r.liveAt)+'.':wasEdit?'Saved.':'Live on the shop.';
     var mh=matchHtml(r.matches,r.id);
     if(wasEdit){clearEdit();$('s-flash').innerHTML='<p class="msg '+(okIg?'good':'bad')+'" style="margin:0 0 12px">'+esc(what+ig)+'</p>'+mh;show('stock');return;}
@@ -681,7 +684,7 @@ function loadDrop(){
     var msg='New drop is live: '+q.length+' piece'+(q.length===1?'':'s')+' just went up. First come, first served.\n'+SHOP.replace('https://','')+'/shop';
     $('drop').className='';
     $('drop').innerHTML='<div class="dropbox" style="cursor:default"><span class="tag">Goes live in</span><div class="cd" data-cd="'+esc(dropInfo.next)+'">'+cd(dropInfo.next)+'</div><span class="mute">'+esc(dropWhen(dropInfo.next))+'</span></div>'+
-      '<h2>Lined up to go live together</h2>'+(q.length?q.map(function(p){return '<div class="box"><div class="stk">'+(p.photo?'<img src="'+esc(p.photo)+'" alt="">':'<div class="np"></div>')+'<div style="flex:1;min-width:0"><div>'+esc((p.brand?p.brand+' ':'')+p.name)+'</div><div class="dim">'+[p.size?esc(p.size):'',rs(p.price),p.igPending?'Instagram on':'No Instagram post'].filter(Boolean).join(' · ')+'</div></div></div><div class="acts"><button class="sm" data-edit="'+esc(p.id)+'">Edit</button><button class="sm" data-out="'+esc(p.id)+'">Take out of this drop</button></div></div>';}).join(''):'<p class="mute">Nothing lined up yet. When you add a piece, choose "Next drop" at the bottom.</p>')+
+      '<h2>Lined up to go live together</h2>'+(q.length?q.map(function(p){return '<div class="box"><div class="stk">'+(p.photo?'<img src="'+esc(p.photo)+'" alt="">':'<div class="np"></div>')+'<div style="flex:1;min-width:0"><div>'+esc((p.brand?p.brand+' ':'')+p.name)+'</div><div class="dim">'+[p.size?esc(p.size):'',rs(p.price),[p.igPending?'Instagram':'',(p.fbPending===undefined?p.igPending:p.fbPending)?'Facebook':''].filter(Boolean).join(' and ')||'Website only'].filter(Boolean).join(' · ')+'</div></div></div><div class="acts"><button class="sm" data-edit="'+esc(p.id)+'">Edit</button><button class="sm" data-out="'+esc(p.id)+'">Take out of this drop</button></div></div>';}).join(''):'<p class="mute">Nothing lined up yet. When you add a piece, choose "Next drop" at the bottom.</p>')+
       '<button class="btn pop" data-dadd type="button" style="margin-top:8px">Add a piece to this drop</button>'+
       (drafts?'<p class="dim" style="margin:10px 0 0">You also have '+drafts+' draft'+(drafts>1?'s':'')+'. <button class="link" data-go="stock:draft">Finish them</button></p>':'')+
       (q.length?'<button class="btn" data-dnow type="button" style="background:transparent;color:var(--ink);border-color:var(--edge);margin-top:10px">Put them all live right now</button>':'')+

@@ -252,7 +252,7 @@ async function allProducts(request, env, ctx, priv) {
   const gone = new Set((sold.results || []).map((r) => r.product_id));
   return list.map((p) => {
     const out = { ...p, id: String(p.id), sold: !!p.sold || gone.has(String(p.id)) };
-    if (!priv) { for (const k of ['cost', 'source', 'by', 'igPending', 'igPosted', 'igResult', 'draft', 'liveAt', 'addedAt']) delete out[k]; }
+    if (!priv) { for (const k of ['cost', 'source', 'by', 'igPending', 'igPosted', 'igResult', 'fbPending', 'fbPosted', 'draft', 'liveAt', 'addedAt']) delete out[k]; }
     else { out.hidden = hidden(out, now); out.views = (counts[out.id] || {}).view || 0; out.bags = (counts[out.id] || {}).bag || 0; }
     return out;
   });
@@ -405,13 +405,15 @@ async function addProduct(request, env, body) {
   if (body.igImage) { const r = photoRow(env, id + '-ig', id, body.igImage, 1800000); if (r.stmt) { stmts.push(r.stmt); product.igPhoto = r.path; } }
   let instagram = 'not requested';
   const wait = hidden(product);
-  if (body.postToInstagram && wait) { product.igPending = true; instagram = when === 'drop' ? 'will post when the drop goes live' : 'will post when you put it live'; }
+  const wantIg = !!body.postToInstagram, wantFb = !!body.postToFacebook;
+  if ((wantIg || wantFb) && wait) { product.igPending = wantIg; product.fbPending = wantFb; instagram = when === 'drop' ? 'will post when the drop goes live' : 'will post when you put it live'; }
   const at = new Date().toISOString();
   stmts.push(env.DB.prepare('INSERT INTO products (id, data, at) VALUES (?, ?, ?)').bind(id, JSON.stringify(product), at));
   await env.DB.batch(stmts);
-  if (body.postToInstagram && !wait) {
-    instagram = await igPublish(new URL(request.url).origin, env, product);
-    if (/^posted/.test(instagram)) { product.igPosted = true; await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(product), id).run(); }
+  if ((wantIg || wantFb) && !wait) {
+    const r = await igPublish(new URL(request.url).origin, env, product, wantIg, wantFb);
+    instagram = r.text;
+    if (r.ig || r.fb) { if (r.ig) product.igPosted = true; if (r.fb) product.fbPosted = true; await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(product), id).run(); }
   }
   return json({ ok: true, id, instagram, liveAt: product.liveAt || '', matches: wait ? [] : await matchesFor(env, product) });
 }
@@ -447,16 +449,19 @@ async function updateProduct(request, env, body) {
   if (['now', 'drop', 'draft'].includes(body.when)) await setWhen(env, p, body.when);
   const wait = hidden(p);
   if (!p.draft && (!p.name || p.name === 'Draft piece' || !p.price)) return json({ error: 'details', message: 'Give it a name and a selling price before it goes on sale.' }, 400);
+  const fbWas = fbWaiting(p);
   if ('postToInstagram' in body && wait) p.igPending = !!body.postToInstagram;
-  const post = !wait && (body.postToInstagram || (wasHidden && p.igPending));
+  if (wait) p.fbPending = 'postToFacebook' in body ? !!body.postToFacebook : fbWas;
+  const doIg = !wait && !!(body.postToInstagram || (wasHidden && p.igPending)), doFb = !wait && !!(body.postToFacebook || (wasHidden && fbWas));
+  const post = doIg || doFb;
   stmts.push(env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), id));
   await env.DB.batch(stmts);
   let instagram = 'not requested';
   if (post) {
-    instagram = await igPublish(new URL(request.url).origin, env, p);
-    p.igPending = false; if (/^posted/.test(instagram)) p.igPosted = true;
+    const r = await igPublish(new URL(request.url).origin, env, p, doIg, doFb);
+    instagram = r.text; p.igPending = false; p.fbPending = false; if (r.ig) p.igPosted = true; if (r.fb) p.fbPosted = true;
     await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), id).run();
-  } else if (wait && p.igPending) instagram = 'will post when it goes live';
+  } else if (wait && (p.igPending || p.fbPending)) instagram = 'will post when it goes live';
   return json({ ok: true, id, instagram, liveAt: p.liveAt || '', matches: wasHidden && !wait ? await matchesFor(env, p) : [] });
 }
 // Open requests that look like this piece, so the owners can message those people first.
@@ -476,39 +481,49 @@ async function matchesFor(env, p) {
   }
   return out.sort((a, b) => Number(b.sizeFits) - Number(a.sizeFits)).slice(0, 30);
 }
-// Publishes the first photo to Instagram with a caption linking back to the piece.
-async function igPublish(origin, env, product) {
+// Publishes the first photo, with a caption linking back to the piece, to Instagram, the Facebook Page, or both.
+// Returns { text, ig, fb }: a line for the owner, and which of the two actually posted.
+async function igPublish(origin, env, product, toIg, toFb) {
   const auth = await igAuth(env);
-  if (auth.error) return auth.error;
+  if (auth.error) return { text: auth.error, ig: false, fb: false };
   const token = auth.token;
   // Captions always show the shop's own address, whichever address the owner app was opened from.
   const shop = env.SHOP_URL || 'mountainthrifters.com';
   const caption = (product.brand ? product.brand + ' ' : '') + product.name + '\n' + [product.size ? 'Size ' + product.size : '', product.condition, 'Rs ' + product.price.toLocaleString('en-IN')].filter(Boolean).join(' · ') +
     '\n\nTo buy: tap the link in our bio, then tap this photo.\n' + shop + '/p/' + product.id + '\n\n#thrifted #mountainthrifters #manali';
+  let ig = false, fb = false, igErr = '', fbErr = '';
   try {
-    const make = new URL(auth.base + '/' + auth.id + '/media');
-    make.searchParams.set('image_url', origin + (product.igPhoto || product.photo));
-    make.searchParams.set('caption', caption);
-    make.searchParams.set('access_token', token);
-    const a = await (await fetch(make, { method: 'POST' })).json();
-    if (!a.id) return 'failed: ' + ((a.error && a.error.message) || 'Instagram did not accept the photo');
-    const pub = new URL(auth.base + '/' + auth.id + '/media_publish');
-    pub.searchParams.set('creation_id', a.id);
-    pub.searchParams.set('access_token', token);
-    const b = await (await fetch(pub, { method: 'POST' })).json();
-    if (!b.id) return 'failed: ' + ((b.error && b.error.message) || 'Instagram did not publish the post');
-    // Same photo and caption to the linked Facebook Page, when the token allows it.
-    if (auth.pageId) {
-      const fb = new URL(FB + '/' + auth.pageId + '/photos');
-      fb.searchParams.set('url', origin + product.photo);
-      fb.searchParams.set('caption', caption);
-      fb.searchParams.set('access_token', token);
-      const c = await (await fetch(fb, { method: 'POST' })).json().catch(() => ({}));
-      return c.id ? 'posted, and on Facebook' : 'posted (Facebook Page: ' + ((c.error && c.error.message) || 'not posted') + ')';
+    if (toIg) {
+      const make = new URL(auth.base + '/' + auth.id + '/media');
+      make.searchParams.set('image_url', origin + (product.igPhoto || product.photo));
+      make.searchParams.set('caption', caption);
+      make.searchParams.set('access_token', token);
+      const a = await (await fetch(make, { method: 'POST' })).json();
+      if (!a.id) igErr = (a.error && a.error.message) || 'Instagram did not accept the photo';
+      else {
+        const pub = new URL(auth.base + '/' + auth.id + '/media_publish');
+        pub.searchParams.set('creation_id', a.id);
+        pub.searchParams.set('access_token', token);
+        const b = await (await fetch(pub, { method: 'POST' })).json();
+        if (b.id) ig = true; else igErr = (b.error && b.error.message) || 'Instagram did not publish the post';
+      }
     }
-    return 'posted';
-  } catch (e) { return 'failed: could not reach Instagram'; }
+    if (toFb) {
+      if (!auth.pageId) fbErr = 'no Facebook Page is linked to this login';
+      else {
+        const u = new URL(FB + '/' + auth.pageId + '/photos');
+        u.searchParams.set('url', origin + product.photo);
+        u.searchParams.set('caption', caption.replace('tap the link in our bio, then tap this photo.', 'tap the link below.'));
+        u.searchParams.set('access_token', token);
+        const c = await (await fetch(u, { method: 'POST' })).json().catch(() => ({}));
+        if (c.id) fb = true; else fbErr = (c.error && c.error.message) || 'not posted';
+      }
+    }
+  } catch (e) { return { text: 'failed: could not reach ' + (toIg && !ig ? 'Instagram' : 'Facebook'), ig, fb }; }
+  const good = [ig ? 'Instagram' : '', fb ? 'Facebook' : ''].filter(Boolean), bad = [igErr ? 'Instagram: ' + igErr : '', fbErr ? 'Facebook: ' + fbErr : ''].filter(Boolean);
+  return { text: (good.length ? 'posted to ' + good.join(' and ') : 'failed') + (bad.length ? (good.length ? ', but ' : ': ') + bad.join('; ') : ''), ig, fb };
 }
+const fbWaiting = (p) => (p.fbPending === undefined ? !!p.igPending : !!p.fbPending);
 
 // Everything the Numbers tab needs: each sale, what is waiting, and what is unsold.
 async function stats(request, env, ctx) {
@@ -1109,9 +1124,9 @@ export default {
       const fresh = live.filter((p) => p.liveAt > (last || now));
       if (!last) await saveSetting(env, 'drop_seen', now);
       else if (fresh.length) { await saveSetting(env, 'drop_seen', now); await tg(env, 'Your drop is live: ' + fresh.length + ' piece' + (fresh.length > 1 ? 's' : '') + ' just went up on the shop. Send the message to your alerts list.'); }
-      for (const p of live.filter((x) => x.igPending).slice(0, 6)) {
-        p.igResult = await igPublish(SITE, env, p);
-        p.igPending = false; if (/^posted/.test(p.igResult)) p.igPosted = true;
+      for (const p of live.filter((x) => x.igPending || fbWaiting(x)).slice(0, 6)) {
+        const r = await igPublish(SITE, env, p, !!p.igPending, fbWaiting(p));
+        p.igResult = r.text; p.igPending = false; p.fbPending = false; if (r.ig) p.igPosted = true; if (r.fb) p.fbPosted = true;
         await env.DB.prepare('UPDATE products SET data = ? WHERE id = ?').bind(JSON.stringify(p), p.id).run();
       }
       return;
