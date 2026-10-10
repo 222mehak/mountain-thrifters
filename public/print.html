@@ -56,7 +56,7 @@ if(q.get('order')){
     out.innerHTML='<div class="slip"><div class="top"><div><h1>The Mountain Thrifters</h1><div>Manali, Himachal Pradesh · WhatsApp +'+esc(r[1].whatsapp||'')+'</div></div><div style="text-align:right"><b>Order '+esc(o.id)+'</b><br>'+new Date(o.at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})+'</div></div>'+
       '<h2>Deliver to</h2><div class="to"><b>'+esc(o.name)+'</b><br>'+esc(o.address)+'<br>'+esc([o.city,o.pincode].filter(Boolean).join(' '))+'<br>Phone: '+esc(o.phone)+'</div>'+
       '<h2>In this parcel</h2><table>'+(o.items||[]).map(function(i){return '<tr><td>'+esc(i.name)+(i.size?' (Size '+esc(i.size)+')':'')+'</td><td>'+rs(i.price)+'</td></tr>';}).join('')+
-      (o.discount?'<tr><td>'+esc(o.discountLabel||'Discount')+'</td><td>minus '+rs(o.discount)+'</td></tr>':'')+'<tr><td><b>Total paid</b></td><td><b>'+rs(o.total)+'</b></td></tr></table>'+
+      (o.discount?'<tr><td>'+esc(o.discountLabel||'Discount')+'</td><td>minus '+rs(o.discount)+'</td></tr>':'')+(o.shipping?'<tr><td>Shipping</td><td>'+rs(o.shipping)+'</td></tr>':'')+'<tr><td><b>Total paid</b></td><td><b>'+rs(o.total)+'</b></td></tr></table>'+
       '<div class="foot">'+qr(SHOP+'/shop')+'<div><b>Thanks for buying from us.</b><br>Packed by hand in Manali. Tag @mountain_thrifters when you take it out, we love seeing where the gear ends up.<br>New pieces every week at mountainthrifters.com</div></div></div>';
   }).catch(function(e){what.textContent=e.message;});
 }else{

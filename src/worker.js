@@ -56,6 +56,59 @@ async function bundleRule(env) {
   try { const v = JSON.parse(await setting(env, 'bundle')); if (v && v.on && v.n >= 2 && v.pct > 0 && v.pct <= 50) return { on: true, n: Number(v.n), pct: Number(v.pct) }; if (v) return { on: false, n: Number(v.n) || 2, pct: Number(v.pct) || 10 }; } catch (e) { /* off */ }
   return { on: false, n: 2, pct: 10 };
 }
+// Shipping charge: a flat fee below the free-shipping line. Fee 0 means "we confirm it on WhatsApp".
+async function shipRule(env) {
+  try { const v = JSON.parse(await setting(env, 'shipping')); if (v) return { fee: Number(v.fee) || 0, freeOver: Number(v.freeOver) || 0 }; } catch (e) { /* default */ }
+  return { fee: 0, freeOver: 2000 };
+}
+const shipFor = (rule, amount) => (rule.fee > 0 && !(rule.freeOver > 0 && amount > rule.freeOver) ? rule.fee : 0);
+// The policy pages. Kept here so the shop, search engines and payment providers all read the same words.
+const EMAIL = 'orders@mountainthrifters.com', ADDRESS = 'Opposite HPWD Rest House, Mohal, Kullu, Himachal Pradesh, India';
+async function policies(env) {
+  const wa = whatsapp(env), phone = '+' + wa.slice(0, 2) + ' ' + wa.slice(2, 7) + ' ' + wa.slice(7), ship = await shipRule(env);
+  const reach = '<a href="https://wa.me/' + wa + '">WhatsApp ' + phone + '</a> or <a href="mailto:' + EMAIL + '">' + EMAIL + '</a>';
+  const free = ship.freeOver > 0 ? 'Shipping is free on orders over Rs ' + ship.freeOver.toLocaleString('en-IN') + '.' : '';
+  const below = ship.fee > 0 ? 'we charge a flat Rs ' + ship.fee.toLocaleString('en-IN') + ' for shipping anywhere in India. You see it at checkout before you pay.' : 'shipping is charged at what it costs us to send from Manali to your pincode. We tell you the amount on WhatsApp before you pay.';
+  return {
+    contact: { title: 'Contact us', desc: 'How to reach The Mountain Thrifters: WhatsApp, phone, email and address.', html:
+      '<p>We are a small shop run by two people, so you are always talking to one of us.</p>' +
+      '<h2>WhatsApp or call</h2><p><a href="https://wa.me/' + wa + '">' + phone + '</a>. This is the fastest way to reach us.</p>' +
+      '<h2>Email</h2><p><a href="mailto:' + EMAIL + '">' + EMAIL + '</a></p>' +
+      '<h2>Address</h2><p>The Mountain Thrifters<br>' + ADDRESS.replace(/, /g, '<br>') + '</p>' +
+      '<h2>Instagram</h2><p><a href="https://www.instagram.com/mountain_thrifters/">@mountain_thrifters</a></p>' },
+    shipping: { title: 'Shipping', desc: 'Shipping charges and delivery for orders from The Mountain Thrifters, sent from Manali across India.', html:
+      '<p>Every order is packed by hand and sent from the Kullu-Manali valley. We ship across India.</p>' +
+      '<h2>What it costs</h2><p>' + (free ? free + ' Below that, ' + below : below.charAt(0).toUpperCase() + below.slice(1)) + '</p>' +
+      '<h2>When it ships</h2><p>We pack your order once your payment is confirmed, and message you on WhatsApp with the courier name and tracking number when it leaves.</p>' +
+      '<h2>Delivery</h2><p>How long it takes depends on the courier and your pincode. Mountain roads and weather can add a day or two in winter. If your parcel seems stuck, message us and we will chase it.</p>' +
+      '<h2>If something arrives damaged</h2><p>Send us a photo on WhatsApp the day it arrives and we will sort it out.</p>' +
+      '<p>Questions: ' + reach + '.</p>' },
+    returns: { title: 'Returns, refunds and cancellations', desc: 'Return any piece within 5 days of receiving it. How returns, refunds and cancellations work at The Mountain Thrifters.', html:
+      '<h2>Returns</h2><p>If a piece is not right, you can return it within 5 days of receiving it.</p>' +
+      '<ul><li>Message us on WhatsApp with your order number and tell us what is wrong.</li><li>We arrange the return and we pay for the return shipping.</li><li>Send it back as it arrived: unwashed, not worn beyond trying it on, with anything that came with it.</li></ul>' +
+      '<h2>Refunds</h2><p>Once the piece is back with us and we have checked it, we refund what you paid for it, to the same method you paid with.</p>' +
+      '<h2>Cancellations</h2><p>You can cancel any time before your order ships. Message us on WhatsApp and we refund the full amount. Once it has shipped, it is handled as a return.</p>' +
+      '<h2>Thrifted pieces</h2><p>Most of what we sell has been worn before. We describe the condition and show any flaws in the photos. If something you receive does not match the listing, tell us and we will make it right.</p>' +
+      '<p>Reach us: ' + reach + '.</p>' },
+    privacy: { title: 'Privacy', desc: 'What information The Mountain Thrifters collects, why, and how to have it removed.', html:
+      '<p>We collect only what we need to sell and ship gear.</p>' +
+      '<h2>What we collect</h2><ul><li><b>When you order:</b> your name, mobile number and delivery address.</li><li><b>When you sign up for drop alerts:</b> your name and WhatsApp number, plus your size, interest and email if you choose to add them.</li><li><b>When you offer gear or ask us to find something:</b> your name, WhatsApp number, what you wrote, and any photos you send.</li><li><b>When you browse:</b> we count how many times each piece is looked at or added to a bag. These counts are not linked to you.</li></ul>' +
+      '<h2>How we use it</h2><p>To confirm and ship your order, to reply to you, and to send drop messages if you asked for them. Nothing else.</p>' +
+      '<h2>Who sees it</h2><p>The two of us, the courier that delivers your parcel (name, phone and address), and the payment provider when you pay. We do not sell or rent your details to anyone.</p>' +
+      '<h2>Payments</h2><p>Payments are handled by your UPI app or our payment provider. We never see or store your card or bank details.</p>' +
+      '<h2>Removing your details</h2><p>To leave the alerts list or have your details deleted, message us: ' + reach + '.</p>' },
+    terms: { title: 'Terms', desc: 'The terms for buying from The Mountain Thrifters.', html:
+      '<p>These are the terms for buying from The Mountain Thrifters at mountainthrifters.com.</p>' +
+      '<h2>What we sell</h2><p>Outdoor gear, thrifted and new. Thrifted pieces have been worn before; we check each one by hand, describe its condition and show flaws in the photos. Most pieces are one of a kind, so once one sells it is gone.</p>' +
+      '<h2>Prices and payment</h2><p>Prices are in Indian rupees. An order is confirmed once we have received your payment. Until then the piece is held for you for a short time and may be released if payment does not arrive.</p>' +
+      '<h2>Shipping</h2><p>See our <a href="/shipping">shipping page</a>.</p>' +
+      '<h2>Returns and refunds</h2><p>See our <a href="/returns">returns page</a>.</p>' +
+      '<h2>Selling gear to us</h2><p>If you offer us gear, you confirm it is yours to sell. An offer from us is only final once we have seen the piece.</p>' +
+      '<h2>Your details</h2><p>See our <a href="/privacy">privacy page</a>.</p>' +
+      '<h2>The law</h2><p>These terms follow the laws of India.</p>' +
+      '<p>Questions: ' + reach + '.</p>' },
+  };
+}
 async function tg(env, text) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return false;
   try { const r = await fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/sendMessage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text }) }); return r.ok; } catch (e) { return false; }
@@ -208,7 +261,7 @@ async function allProducts(request, env, ctx, priv) {
 // ---------- Alerts ----------
 async function notify(env, order) {
   const lines = order.items.map((i) => '- ' + i.name + (i.size ? ' (Size ' + i.size + ')' : '') + ' Rs ' + i.price);
-  const text = 'New order ' + order.id + '\n' + lines.join('\n') + (order.discount ? '\n' + order.discountLabel + ': minus Rs ' + order.discount : '') + '\nTotal: Rs ' + order.total +
+  const text = 'New order ' + order.id + '\n' + lines.join('\n') + (order.discount ? '\n' + order.discountLabel + ': minus Rs ' + order.discount : '') + (order.shipping ? '\nShipping: Rs ' + order.shipping : '') + '\nTotal: Rs ' + order.total +
     '\n\n' + order.name + '\n' + order.phone + '\n' + order.address + '\n' + order.city + ' ' + order.pincode +
     '\n\nWaiting for UPI payment. Confirm it in the admin page.';
   const jobs = [];
@@ -271,12 +324,14 @@ async function placeOrder(request, env, ctx) {
   const subtotal = items.reduce((s, i) => s + i.price, 0);
   const deal = await moneyOff(env, body.code, subtotal, items.length);
   if (deal.error) return json({ error: 'code', message: deal.error }, 400);
-  const total = subtotal - deal.off;
+  const shipping = shipFor(await shipRule(env), subtotal - deal.off);
+  const total = subtotal - deal.off + shipping;
   // Share the money off across the pieces, so profit per piece stays right.
   if (deal.off) { let left = deal.off; items.forEach((i, n) => { const cut = n === items.length - 1 ? left : Math.round(deal.off * i.price / subtotal); left -= cut; i.paid = i.price - cut; }); }
   const id = 'MT' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 1296).toString(36).toUpperCase().padStart(2, '0');
   const at = new Date().toISOString();
   const order = { id, items, total, name, phone, pincode, city, address };
+  if (shipping) order.shipping = shipping;
   if (deal.off) { order.subtotal = subtotal; order.discount = deal.off; order.discountLabel = deal.label; order.code = deal.code; }
   // One batch: if any piece was taken a moment ago, nothing is saved.
   const stmts = items.map((i) => env.DB.prepare('INSERT INTO sold (product_id, order_id, at) VALUES (?, ?, ?)').bind(i.id, id, at));
@@ -288,7 +343,7 @@ async function placeOrder(request, env, ctx) {
   try { await env.DB.batch(stmts); }
   catch (e) { return json({ error: 'sold', message: 'Someone bought one of these a moment ago. Your bag has been updated.' }, 409); }
   ctx.waitUntil(notify(env, order));
-  return json({ orderId: id, total, discount: deal.off, discountLabel: deal.label, items: items.map((i) => ({ name: i.name, size: i.size, price: i.price })), upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
+  return json({ orderId: id, total, shipping, discount: deal.off, discountLabel: deal.label, items: items.map((i) => ({ name: i.name, size: i.size, price: i.price })), upiId: env.UPI_ID || '', upiName: env.UPI_NAME || 'The Mountain Thrifters', whatsapp: whatsapp(env) });
 }
 
 // ---------- Admin ----------
@@ -560,6 +615,7 @@ async function admin(request, env, path, ctx) {
     return json({ ok: true });
   }
   if (path === '/api/admin/code-delete') { await env.DB.prepare('DELETE FROM codes WHERE code = ?').bind(String(body.code)).run(); return json({ ok: true }); }
+  if (path === '/api/admin/shipping') { await saveSetting(env, 'shipping', JSON.stringify({ fee: num(body.fee) || 0, freeOver: num(body.freeOver) || 0 })); return json({ ok: true }); }
   if (path === '/api/admin/bundle') {
     const n = num(body.n) || 2, pct = num(body.pct) || 0;
     if (body.on && (n < 2 || pct < 1 || pct > 50)) return json({ error: 'details', message: 'Use 2 or more pieces, and between 1 and 50 percent.' }, 400);
@@ -817,7 +873,7 @@ async function site(request, env, ctx, url) {
     await init(env);
     const products = (await allProducts(request, env, ctx)).filter((p) => !p.sold && !p.sample);
     const cats = await categories(env);
-    const urls = ['/', '/shop', '/sell', '/feed'].map((u) => [u, '']);
+    const urls = ['/', '/shop', '/sell', '/feed', '/contact', '/shipping', '/returns', '/privacy', '/terms'].map((u) => [u, '']);
     for (const c of cats) { urls.push(['/c/' + slug(c.name), '']); for (const x of c.subs || []) urls.push(['/c/' + slug(x), '']); }
     for (const p of products) urls.push(['/p/' + encodeURIComponent(p.id), p.listedAt || '']);
     const gl = await guideList(env, false);
@@ -829,7 +885,8 @@ async function site(request, env, ctx, url) {
       '\n</urlset>\n', { headers: { 'content-type': 'application/xml' } });
   }
   const isProduct = path.startsWith('/p/'), isCat = path.startsWith('/c/'), isGuide = path === '/guides' || path.startsWith('/guides/');
-  if (!isProduct && !isCat && !isGuide && !(path in PAGES)) return env.ASSETS.fetch(request);
+  const POL = ['/contact', '/shipping', '/returns', '/privacy', '/terms'], isPolicy = POL.includes(path);
+  if (!isProduct && !isCat && !isGuide && !isPolicy && !(path in PAGES)) return env.ASSETS.fetch(request);
   // Every shop page is the same app shell, with the title, description and a
   // plain-HTML copy of the content written in for search engines and link previews.
   const shell = await env.ASSETS.fetch(new Request(new URL('/', url)));
@@ -864,6 +921,10 @@ async function site(request, env, ctx, url) {
       const crumbs = [['Shop', '/shop']].concat(p.category ? [[p.category, '/c/' + slug(p.category)]] : []).concat(p.sub ? [[p.sub, '/c/' + slug(p.sub)]] : []).concat([[full, path]]);
       ld.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c[0], item: SITE + c[1] })) });
     } else { status = 404; noindex = true; title = 'This piece is gone'; body = '<h1>This piece is gone</h1><p><a href="/shop">See what is still here.</a></p>'; }
+  } else if (isPolicy) {
+    await init(env);
+    const pg = (await policies(env))[path.slice(1)];
+    title = pg.title; desc = pg.desc; body = '<h1>' + esc(pg.title) + '</h1>' + pg.html;
   } else if (isGuide) {
     await init(env);
     const gl = await guideList(env, false);
@@ -923,7 +984,7 @@ export default {
       await init(env);
       if (url.pathname === '/api/products') return json(await allProducts(request, env, ctx));
       if (url.pathname === '/api/guides') return json({ guides: (await guideList(env, false)).map((g) => ({ slug: g.slug, title: g.title, summary: g.summary, at: g.at, html: guideHtml(g.body) })) });
-      if (url.pathname === '/api/config') { const b = await bundleRule(env); return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env), bundle: b.on ? { n: b.n, pct: b.pct } : null }); }
+      if (url.pathname === '/api/config') { const b = await bundleRule(env); return json({ categories: await categories(env), whatsapp: whatsapp(env), notice: await bannerText(env), bundle: b.on ? { n: b.n, pct: b.pct } : null, shipping: await shipRule(env) }); }
       // Counts a look at a piece, or an add to a bag. No personal details are kept.
       if (url.pathname === '/api/track' && request.method === 'POST') {
         const b = await request.json().catch(() => ({}));
@@ -938,8 +999,10 @@ export default {
         const picked = (await allProducts(request, env, ctx)).filter((p) => ids.includes(p.id) && !p.sold);
         const subtotal = picked.reduce((t, p) => t + (Number(p.price) || 0), 0);
         const deal = await moneyOff(env, b.code, subtotal, picked.length);
-        return json({ subtotal, off: deal.off, label: deal.label, code: deal.code, total: subtotal - deal.off, message: deal.error });
+        const shipping = shipFor(await shipRule(env), subtotal - deal.off);
+        return json({ subtotal, off: deal.off, label: deal.label, code: deal.code, shipping, total: subtotal - deal.off + shipping, message: deal.error });
       }
+      if (url.pathname === '/api/policy') { const pg = (await policies(env))[url.searchParams.get('p') || '']; return pg ? json({ title: pg.title, html: pg.html }) : json({ error: 'not_found' }, 404); }
       if (url.pathname === '/api/instagram') return json(await igPage(env, ctx, url.searchParams.get('after') || ''));
       if (url.pathname === '/api/order' && request.method === 'POST') return placeOrder(request, env, ctx);
       // A customer asking us to find something: either "one like this sold piece" or anything they describe.

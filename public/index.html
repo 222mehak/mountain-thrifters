@@ -225,6 +225,7 @@ section{padding:60px 0}
 <div class="wrap">
 <div>The Mountain Thrifters, Manali, Himachal Pradesh.<br>Outdoor gear, thrifted and new. Shipped across India.</div>
 <div><a href="https://www.instagram.com/mountain_thrifters/" target="_blank" rel="noopener">Instagram @mountain_thrifters</a><br><a href="/request" data-link>Ask us to find something</a><br><a href="#" id="fwa" target="_blank" rel="noopener">Message us on WhatsApp</a><br>Call or WhatsApp: <a href="tel:+919317568898">+91 93175 68898</a></div>
+<div><a href="/contact" data-link>Contact</a><br><a href="/shipping" data-link>Shipping</a><br><a href="/returns" data-link>Returns and refunds</a><br><a href="/privacy" data-link>Privacy</a><br><a href="/terms" data-link>Terms</a></div>
 </div>
 </footer>
 
@@ -255,7 +256,7 @@ function load(){
     S.products=Array.isArray(a[0])?a[0]:[];
     S.cats=(a[1]&&a[1].categories)||[];
     if(a[1]&&a[1].whatsapp)S.wa=a[1].whatsapp;
-    S.bundle=(a[1]&&a[1].bundle)||null;
+    S.bundle=(a[1]&&a[1].bundle)||null;S.ship=(a[1]&&a[1].shipping)||{fee:0,freeOver:0};
     S.loaded=true;
     document.getElementById('fwa').href=waLink('Hi Mountain Thrifters!');
     var drop=(a[1]&&a[1].notice)||'';S.notice=drop;
@@ -442,8 +443,13 @@ function totals(items,q){
   var sub=sum(items),off=0,label='';
   if(q&&q.off){off=q.off;label=q.label;}
   else if(S.bundle&&items.length>=S.bundle.n){off=Math.round(sub*S.bundle.pct/100);label=S.bundle.pct+'% off for '+S.bundle.n+' or more pieces';}
-  return (off?'<div class="sumrow" style="padding-top:20px"><span>Pieces</span><span>'+rs(sub)+'</span></div><div class="sumrow"><span>'+esc(label)+'</span><span>minus '+rs(off)+'</span></div>':'')+
-    '<div class="total"'+(off?' style="padding-top:8px"':'')+'><span>Total</span><span>'+rs(sub-off)+'</span></div>';
+  var net=sub-off,sh=S.ship||{fee:0,freeOver:0},isFree=sh.freeOver>0&&net>sh.freeOver,fee=isFree?0:sh.fee;
+  var shipTxt=isFree?'Free':fee?rs(fee):(sh.freeOver>0||sh.fee?'We confirm it on WhatsApp':'');
+  var rows=(off||shipTxt)?'<div class="sumrow" style="padding-top:20px"><span>Pieces</span><span>'+rs(sub)+'</span></div>':'';
+  if(off)rows+='<div class="sumrow"><span>'+esc(label)+'</span><span>minus '+rs(off)+'</span></div>';
+  if(shipTxt)rows+='<div class="sumrow"><span>Shipping</span><span>'+shipTxt+'</span></div>';
+  if(!isFree&&sh.freeOver>0)rows+='<div class="sumrow" style="font-size:14px"><span>Free shipping on orders over '+rs(sh.freeOver)+'</span></div>';
+  return rows+'<div class="total"'+(rows?' style="padding-top:8px"':'')+'><span>Total</span><span>'+rs(net+fee)+'</span></div>';
 }
 var codeQ=null;
 function checkCode(){
@@ -494,7 +500,7 @@ function done(){
   if(!S.done){go('/shop',true);return;}
   var r=S.done.r,c=S.done.c;
   var text='Hi Mountain Thrifters! I have placed order '+r.orderId+'.\n'+(r.items||[]).map(function(i){return '- '+i.name+(i.size?' ('+i.size+')':'')+' '+rs(i.price);}).join('\n')+
-    (r.discount?'\n'+r.discountLabel+': minus '+rs(r.discount):'')+'\nTotal: '+rs(r.total)+'\nPaying by UPI now.\nName: '+c.name+'\nPhone: '+c.phone+'\nDeliver to: '+c.address+', '+[c.city,c.pincode].filter(Boolean).join(' ');
+    (r.discount?'\n'+r.discountLabel+': minus '+rs(r.discount):'')+(r.shipping?'\nShipping: '+rs(r.shipping):'')+'\nTotal: '+rs(r.total)+'\nPaying by UPI now.\nName: '+c.name+'\nPhone: '+c.phone+'\nDeliver to: '+c.address+', '+[c.city,c.pincode].filter(Boolean).join(' ');
   var upi=r.upiId?'upi://pay?pa='+encodeURIComponent(r.upiId)+'&pn='+encodeURIComponent(r.upiName)+'&am='+r.total+'&cu=INR&tn='+encodeURIComponent('Order '+r.orderId):'';
   app.innerHTML='<div class="wrap page"><div class="narrow"><div class="eye">Order '+esc(r.orderId)+' / held for you</div><h1 style="margin-top:10px">Thanks, '+esc(String(c.name).split(' ')[0])+'. Two quick steps.</h1>'+
   '<div class="step"><div class="fl">Step 1</div><p>Send us your order on WhatsApp so we can confirm it.</p><a class="btn wa wide" href="'+esc(waLink(text))+'" target="_blank" rel="noopener">Send order on WhatsApp</a></div>'+
@@ -526,6 +532,15 @@ function shrinkPhoto(file){return new Promise(function(done,fail){var url=URL.cr
   img.onerror=function(){URL.revokeObjectURL(url);fail(new Error('One photo could not be opened.'));};img.src=url;});}
 document.addEventListener('change',function(e){if(e.target.id!=='sfile')return;var files=[].slice.call(e.target.files,0,8-sellShots.length);e.target.value='';
   Promise.all(files.map(shrinkPhoto)).then(function(l){sellShots=sellShots.concat(l);drawSellShots();}).catch(function(er){var x=document.getElementById('serr');if(x)x.textContent=er.message;});});
+function policy(name){
+  app.innerHTML='<div class="wrap page mute">Loading…</div>';
+  fetch('/api/policy?p='+encodeURIComponent(name)).then(function(r){return r.json();}).then(function(d){
+    if(location.pathname.replace(/\/+$/,'')!=='/'+name)return;
+    if(!d.html){home();return;}
+    document.title=d.title+' · The Mountain Thrifters';
+    app.innerHTML='<div class="wrap page"><div class="guide"><h1 style="font-size:clamp(38px,6vw,60px)">'+esc(d.title)+'</h1>'+d.html.replace(/<a href="\//g,'<a data-link href="/')+'</div></div>';
+  }).catch(function(){app.innerHTML='<div class="wrap page"><p class="mute">Could not load this page. Check your connection and try again.</p></div>';});
+}
 function guides(slugv){
   app.innerHTML='<div class="wrap page mute">Loading…</div>';
   (S.guides?Promise.resolve():fetch('/api/guides').then(function(r){return r.json();}).then(function(d){S.guides=d.guides||[];}).catch(function(){S.guides=[];})).then(function(){
@@ -596,6 +611,7 @@ function render(){
   else if(path==='/feed')feed();
   else if(path==='/alerts')alerts();
   else if(path==='/request')requestPage();
+  else if(['/contact','/shipping','/returns','/privacy','/terms'].indexOf(path)>-1)policy(path.slice(1));
   else if(path==='/guides'||path.indexOf('/guides/')===0)guides(path.slice(8));
   else home();
   if(name==='c'||name==='p')name='shop';

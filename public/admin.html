@@ -161,7 +161,7 @@ details.ph>summary::-webkit-details-marker{display:none}
 <button class="tile" data-go="stats"><span>Numbers<small>Revenue, profit, what sells and when</small></span><span class="go">›</span></button>
 <div class="grp">Shop setup</div>
 <button class="tile" data-go="cats"><span>Categories<small>Add, rename or delete</small></span><span class="go">›</span></button>
-<button class="tile" data-go="settings"><span>Line at the top of the shop<small>The drop announcement</small></span><span class="go">›</span></button>
+<button class="tile" data-go="settings"><span>Top line and shipping charge<small>The drop announcement, and what shipping costs</small></span><span class="go">›</span></button>
 <button class="tile" data-go="phone"><span>Order alerts on your phone<small id="phonestate">Get a ping for every order</small></span><span class="go">›</span></button>
 <a class="tile" href="/" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><span>View the shop<small>Opens the public site</small></span><span class="go">›</span></a>
 <button class="tile" id="signout"><span>Sign out on this device</span><span class="go">›</span></button>
@@ -170,6 +170,8 @@ details.ph>summary::-webkit-details-marker{display:none}
 <section id="t-settings" hidden>
 <h1>Top line</h1>
 <div class="box"><label for="bn" style="margin-top:0">Line across the top of the shop</label><input id="bn" maxlength="140"><p class="dim" style="margin:6px 0 0">"Sign up for alerts" is added after it and opens WhatsApp. Leave it empty to hide the line.</p><div class="acts"><button class="sm pop" id="bnsave" type="button">Save</button><span class="dim" id="bnmsg" role="status" style="align-self:center"></span></div></div>
+<h2>Shipping charge</h2>
+<div class="box"><div class="r2"><div><label for="sh-fee" style="margin-top:0">Flat charge (Rs)</label><input id="sh-fee" inputmode="numeric" placeholder="Not set"></div><div><label for="sh-free" style="margin-top:0">Free on orders over (Rs)</label><input id="sh-free" inputmode="numeric"></div></div><p class="dim" style="margin:8px 0 0">The charge is added at checkout on smaller orders. Leave it empty and the shop says "We confirm it on WhatsApp" instead, so you can quote each parcel yourself. The Shipping page on the shop updates to match.</p><div class="acts"><button class="sm pop" id="shsave" type="button">Save</button><span class="dim" id="shmsg" role="status" style="align-self:center"></span></div></div>
 </section>
 
 <section id="t-drop" hidden>
@@ -405,8 +407,9 @@ function loadHome(){
       '<button class="btn pop" data-go="add" style="margin-top:8px">Add a new piece</button>';
   }).catch(function(e){$('home').textContent=e.message;});
 }
-function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();$('bn').value=c.notice||'';});}
+function loadConfig(){return fetch('/api/config').then(function(r){return r.json();}).then(function(c){cats=c.categories||[];fillCats();$('bn').value=c.notice||'';var sp=c.shipping||{};$('sh-fee').value=sp.fee||'';$('sh-free').value=sp.freeOver||'';});}
 $('bnsave').onclick=function(){api('banner',{text:$('bn').value}).then(function(){$('bnmsg').textContent='Saved.';}).catch(function(e){$('bnmsg').textContent=e.message;});};
+$('shsave').onclick=function(){api('shipping',{fee:$('sh-fee').value,freeOver:$('sh-free').value}).then(function(){$('shmsg').textContent='Saved.';}).catch(function(e){$('shmsg').textContent=e.message;});};
 $('signin').onclick=function(){
   KEY=$('key').value.trim();
   api('orders').then(function(){try{localStorage.setItem('mt_admin_key',KEY);}catch(e){}$('loginmsg').textContent='';show('home');loadBrands();igState();loadTrips();}).catch(function(e){$('loginmsg').textContent=e.message;});
@@ -609,7 +612,7 @@ function loadOrders(){
       return '<div class="box"><div class="t"><span class="tag">'+esc(o.status)+'</span><span class="dim">'+new Date(o.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+'</span></div>'+
         '<div class="t" style="margin-top:6px"><b>'+esc(o.id)+'</b><b>'+rs(o.total)+'</b></div>'+
         (o.items||[]).map(function(i){return '<div class="mute">'+esc(i.name)+(i.size?' ('+esc(i.size)+')':'')+'</div>';}).join('')+
-        (o.discount?'<div class="dim">'+esc(o.discountLabel||'Discount')+': minus '+rs(o.discount)+'</div>':'')+
+        (o.discount?'<div class="dim">'+esc(o.discountLabel||'Discount')+': minus '+rs(o.discount)+'</div>':'')+(o.shipping?'<div class="dim">Shipping: '+rs(o.shipping)+'</div>':'')+
         '<div style="margin-top:8px">'+esc(o.name)+', '+esc(o.phone)+'</div><div class="dim">'+esc(o.address)+', '+esc(o.city)+' '+esc(o.pincode)+'</div>'+
         (o.courier||o.tracking?'<div class="dim" style="margin-top:6px">Sent with '+esc(o.courier||'courier')+(o.tracking?', tracking '+esc(o.tracking):'')+'</div>':'')+
         (last?'<div class="dim">Marked '+esc(last.s)+' by '+esc(last.who)+'</div>':'')+
